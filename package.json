@@ -1,0 +1,104 @@
+{
+  "name": "npm-base",
+  "author": "waiting",
+  "version": "0.0.0",
+  "description": "npm boilerplate",
+  "keywords": [
+    "种子项目",
+    "ESM",
+    "typescript",
+    "ts"
+  ],
+  "type": "module",
+  "bin": {},
+  "types": "dist/index.d.ts",
+  "imports": {
+    "#package.json": "./package.json",
+    "##/*": "./src/*",
+    "#@/*": "./test/*"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "bugs": {
+    "url": "https://github.com/waitingsong/npm-base/issues"
+  },
+  "homepage": "https://github.com/waitingsong/npm-base#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waitingsong/npm-base"
+  },
+  "license": "MIT",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@commitlint/cli": "19",
+    "@commitlint/config-conventional": "19",
+    "@types/mocha": "10",
+    "@types/node": "20",
+    "@waiting/eslint-config": "^10.25.0",
+    "@waiting/shared-core": "^23.6.1",
+    "c8": "^9.1.0",
+    "coveralls": "3",
+    "cross-env": "7",
+    "eslint": "8",
+    "mocha": "10",
+    "mocha-lcov-reporter": "1",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.8",
+    "tsx": "4",
+    "typescript": "^5.4.5",
+    "zx": "8"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "files": [
+    "README.*.md",
+    "Dockerfile",
+    "npm-shrinkwrap.json",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    "asset",
+    "src",
+    "bin",
+    "database",
+    "dist",
+    "!**/*.spec.*"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "bp:add": "git remote add bp https://github.com/waitingsong/npm-base",
+    "bp:sync": "git fetch --all -v && git pull origin && git merge bp/main -m \"Merge remote-tracking branch 'bp/main'\" ",
+    "bp:syncxo": "git fetch --all -v && git pull origin && git merge bp/main -m \"Merge remote-tracking branch 'bp/main'\" -Xours",
+    "bp:sync-force": "git fetch --all -v && git pull origin && git merge bp/main --allow-unrelated-histories -m \"Merge remote-tracking branch 'bp/main'\" ",
+    "bootstrap": "npm i --loglevel info --disturl=https://npmmirror.com/dist/",
+    "build": "npm run tsc && tsc-alias && npm run rp",
+    "build:unit": "tsc -p test/tsconfig.json",
+    "ci": "npm run cov",
+    "postpublish": "git push origin --follow-tags",
+    "release": "standard-version -r",
+    "release:first": "standard-version --first-release",
+    "repo:init": "sh .githooks/init-repo.sh",
+    "clean": "npm run clean:lock && npm run clean:dist && npm run clean:log",
+    "clean:cache": "rm -rf .eslintcache .tsbuildinfo",
+    "clean:dist": "npm run clean:cache && rm -rf dist/*",
+    "clean:lock": "rm -f package-lock.json",
+    "clean:log": "rm -rf ./logs ./run",
+    "cov": "c8 --all npm run test -- --parallel=false",
+    "lint": "eslint --fix --cache src test",
+    "lint:cycle": "madge --circular --extensions ts src",
+    "lint:nofix": "eslint --cache src test",
+    "pretest": "npm run build && npm run build:unit",
+    "purge": "sh .scripts/purge.sh",
+    "refresh": "npm run clean && npm update && npm run build",
+    "rp": "tsx bin-hashbang.js",
+    "test": "cross-env NODE_ENV=test TS_NODE_PROJECT=test/tsconfig.json mocha --jobs=4",
+    "test:entry": "tsx src/index.ts",
+    "tsc": "tsc -p tsconfig.json"
+  }
+}

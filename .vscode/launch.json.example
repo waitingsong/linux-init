@@ -1,0 +1,49 @@
+{
+  // 使用 IntelliSense 了解相关属性。
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mocha Tests",
+      "type": "node",
+      "args": [
+        "-u",
+        "bdd",
+        "--timeout",
+        "999999",
+        "--colors",
+        "--parallel=false"
+      ],
+      "console": "internalConsole",
+      "env": {
+        "NODE_ENV": "unittest",
+        "TS_NODE_PROJECT": "test/tsconfig.json",
+        "POSTGRES_HOST": "127.0.0.1",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": ""
+      },
+      "internalConsoleOptions": "openOnFirstSessionStart",
+      "request": "launch",
+      "restart": false,
+      "runtimeArgs": [
+        "run",
+        "test",
+        "--",
+        "--runInBand",
+        "--preserve-symlinks"
+      ],
+      "runtimeExecutable": "npm",
+      "skipFiles": [
+        "**/node_modules/rxjs/**",
+        "**/node_modules/mocha/**",
+        "<node_internals>/**",
+        "<node_internals>/**/*.js"
+      ],
+      "smartStep": true,
+      "timeout": 30000
+    }
+  ]
+}

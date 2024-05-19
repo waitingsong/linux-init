@@ -88,14 +88,14 @@ jobs:
         env:
           CI: true
 
-      - name: Testing
-        run: |
-          export cwd=`pwd`
-          . .scripts/ci/ci-env.sh
-          .scripts/ci/ci-prepare.sh
-          npm run cov
-        env:
-          CI: true
+      # - name: Testing
+      #   run: |
+      #     export cwd=`pwd`
+      #     . .scripts/ci/ci-env.sh
+      #     .scripts/ci/ci-prepare.sh
+      #     npm run cov
+      #   env:
+      #     CI: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

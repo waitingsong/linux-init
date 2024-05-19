@@ -1,0 +1,7 @@
+{
+  "data-root": "/data/.docker",
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "registry-mirrors": [
+    "https://docker.nju.edu.cn/"
+  ]
+}

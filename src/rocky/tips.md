@@ -1,0 +1,31 @@
+
+# for Rocky9
+```sh
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+```
+
+客户端上传公钥到服务器
+- 生成 ssh 公钥对    
+  在**客户端电脑** 使用 `git-bash` 执行命令，以自己邮箱地址替换
+  ```sh
+  ssh-keygen -t ed25519 -C <邮箱地址|识别名>
+  ```
+  生成的公钥私钥文件保存在你的`用户空间/.ssh/`目录下面，windows 系统通常为
+  `C:\users\<系统登录用户名>\.ssh\`
+- 绑定公钥到登录用户
+  ```sh
+  ssh-copy-id -i ~/.ssh/id_ed25519.pub  root@<ip|服务器名|域名>
+  ```
+- 若服务器 `ssh` 非标准端口 （假定 1022 端口）
+  ```sh
+  ssh-copy-id -i ~/.ssh/id_rsa.pub "-p 1022 root@<ip|服务器名|域名>" 
+  ```
+
+## 增强系统安全
+
+授权用户 `sudo` 执行权限 执行 `visudo` 末尾添加以下内容
+```
+Defaults: admin        timestamp_timeout=15
+admin  ALL=(ALL)       ALL
+```
+

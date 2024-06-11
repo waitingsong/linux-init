@@ -1,41 +1,44 @@
 {
-  "name": "npm-base",
+  "name": "@waiting/linux-init",
   "author": "waiting",
   "version": "0.0.0",
-  "description": "npm boilerplate",
+  "description": "linux init scripts",
   "keywords": [
-    "种子项目",
     "ESM",
     "typescript",
     "ts"
   ],
   "type": "module",
-  "bin": {},
-  "types": "dist/index.d.ts",
+  "bin": {
+    "rocky-prepare": "src/rocky/prepare.sh",
+    "rocky-install": "src/rocky/install.sh"
+  },
+  "types": "src/index.ts",
   "imports": {
     "#package.json": "./package.json",
     "##/*": "./src/*",
     "#@/*": "./test/*"
   },
   "exports": {
-    ".": "./dist/index.js",
+    ".": "./src/index.js",
     "./package.json": "./package.json"
   },
   "bugs": {
-    "url": "https://github.com/waitingsong/npm-base/issues"
+    "url": "https://github.com/waitingsong/linux-init/issues"
   },
-  "homepage": "https://github.com/waitingsong/npm-base#readme",
+  "homepage": "https://github.com/waitingsong/linux-init#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/waitingsong/npm-base"
+    "url": "https://github.com/waitingsong/linux-init"
   },
   "license": "MIT",
   "dependencies": {
+    "@waiting/shared-core": "^23.10.1",
+    "tsx": "^4.7.3"
   },
   "devDependencies": {
     "@commitlint/cli": "19",
     "@commitlint/config-conventional": "19",
-    "@types/mocha": "10",
     "@types/node": "20",
     "@waiting/eslint-config": "^10.25.1",
     "@waiting/shared-core": "^23.11.0",
@@ -72,7 +75,7 @@
     "bp:syncxo": "git fetch --all -v && git pull origin && git merge bp/main -m \"Merge remote-tracking branch 'bp/main'\" -Xours",
     "bp:sync-force": "git fetch --all -v && git pull origin && git merge bp/main --allow-unrelated-histories -m \"Merge remote-tracking branch 'bp/main'\" ",
     "bootstrap": "npm i --loglevel info --disturl=https://npmmirror.com/dist/",
-    "build": "npm run tsc && tsc-alias && npm run rp",
+    "build": "npm run tsc && tsc-alias",
     "build:unit": "tsc -p test/tsconfig.json",
     "ci": "npm run cov",
     "postinstall": "npm run repo:init",

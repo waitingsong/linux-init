@@ -1,0 +1,14 @@
+{
+  "data-root": "/data/.docker",
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "experimental" : true,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "metrics-addr" : "0.0.0.0:9323",
+  "storage-driver": "overlay2",
+  "registry-mirrors": [
+    "https://docker.nju.edu.cn/"
+  ]
+}

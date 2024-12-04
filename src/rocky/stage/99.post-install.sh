@@ -11,3 +11,5 @@ sed -i '0,/nameserver/{s/nameserver/nameserver 127.0.0.1\n&/}' /etc/resolv.conf
 echo 'options single-request-reopen timeout:1 edns0 trust-ad' >> /etc/resolve.conf
 cp -u config/dnsmasq.d/server.dnsmasq.conf /etc/dnsmasq.d/
 
+
+sh/util/install-fd.sh

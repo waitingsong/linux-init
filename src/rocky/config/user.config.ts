@@ -1,4 +1,5 @@
-import { CreateUserOptions, UserShell } from '@waiting/shared-core/shell'
+import type { CreateUserOptions } from '@waiting/shared-core/shell'
+import { UserShell } from '@waiting/shared-core/shell'
 
 // #region login user -------------
 

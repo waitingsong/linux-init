@@ -11,3 +11,4 @@ sudo systemctl restart sshd
 sh/ssh-login-cert-only.sh
 sudo cp /etc/ssh/sshd_config{,.ok}
 
+set +eu

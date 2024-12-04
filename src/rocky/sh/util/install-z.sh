@@ -21,3 +21,5 @@ chmod a+x /usr/local/z-1.12/z.sh
 # echo ". /usr/local/z-1.12/z.sh"  >> /etc/profile.d/z.bashrc.sh
 # . /usr/local/z-1.12/z.sh
 
+set +e
+

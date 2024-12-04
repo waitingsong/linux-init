@@ -1,5 +1,5 @@
 #!/bin/sh
-set -euo pipefail
+set -eo pipefail
 # DIR="$(dirname "$(readlink -f "$0")")" # 不能正确处理 source 调用的情况
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 ip=$1
 port=$2
@@ -17,4 +17,6 @@ fi
 export https_proxy=http://$ip:$port
 export http_proxy=http://$ip:$port
 export all_proxy=socks5://$ip:$port
+export no_proxy="localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
 
+set +e

@@ -8,3 +8,4 @@ cd "$DIR"
 # ssh-copy-id -i ~/.ssh/id_ed25519.pub "-p 1022 root@<ip|服务器名|域名>"
 sh/$SCRIPT_NAME
 
+set +eu

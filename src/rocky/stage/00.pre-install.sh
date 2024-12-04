@@ -9,3 +9,4 @@ echo "workDir: $workDir"
 
 sh/pre-install.sh
 
+set +eu

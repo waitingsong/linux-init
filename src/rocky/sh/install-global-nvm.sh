@@ -10,7 +10,8 @@ dnf install -y git tar unzip
 
 rm -rf /usr/local/nvm
 if [[ ! -d /usr/local/nvm ]]; then
-  # curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  # repo: https://github.com/nvm-sh/nvm
+  # curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
   unzip -oq "${ASSERT}/nvm.zip" -d /usr/local/
   cd /usr/local/nvm
   git reset --hard

@@ -269,8 +269,8 @@ proguard/
 *.jar
 *.war
 *.ear
-*.zip
-*.tar.gz
+# *.zip
+# *.tar.gz
 *.tgz
 *.rar
 

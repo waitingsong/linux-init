@@ -12,6 +12,11 @@ export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
 export NVM_NODEJS_ORG_MIRROR="https://mirrors.aliyun.com/nodejs-release"
 export NPM_REG_MIRROR="https://registry.npmmirror.com"
 
+if [[ $- != *i* ]]; then
+    return
+fi
+# ========== 仅交互式shell执行以下代码 ==========
+
 # if bash is used, set shopt and prompt
 if [ -n "$BASH_VERSION" ]; then
   shopt -s cdspell    # auto-correct typos in cd
@@ -43,10 +48,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-if [[ $- != *i* ]]; then
-    return
-fi
-# 非交互式shell不执行以下代码
+Z_DIR=/usr/local/z-1.12
+[ -s "$Z_DIR/z.sh" ] && \. "$Z_DIR/z.sh"
+
 df -lhT
 
 # vim:ts=2:sw=2

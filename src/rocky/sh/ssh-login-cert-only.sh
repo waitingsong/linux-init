@@ -12,10 +12,10 @@ if [[ ! -f ~/.ssh/authorized_keys ]]; then
   exit 1
 fi
 
+FILE=/etc/ssh/sshd_config.d/90-custom.conf
 
-echo ==================== SSH 设置仅允许证书登录 ====================
+echo ==================== SSH 设置禁止口令登录 ====================
 
-cp /etc/ssh/sshd_config /etc/ssh/ori_sshd_config
-sed -i "s/^\s*\(PasswordAuthentication.*\)/# \1/g" /etc/ssh/sshd_config
-echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config
+sed -i "s/^\s*\(PasswordAuthentication.*\)/# \1/g" $FILE
+echo 'PasswordAuthentication no' >> $FILE
 

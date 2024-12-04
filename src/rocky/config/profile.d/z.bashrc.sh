@@ -1,5 +1,5 @@
 #!/bin/sh
-# cp -u bashrc.custom.sh /etc/profile.d/
+# cp -u z.bashrc.sh /etc/profile.d/
 
 export REG1='foo'
 
@@ -43,6 +43,10 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# df -lhT
+if [[ $- != *i* ]]; then
+    return
+fi
+# 非交互式shell不执行以下代码
+df -lhT
 
-# vim:ts=4:sw=4
+# vim:ts=2:sw=2

@@ -58,6 +58,7 @@ dnf install -y \
   rpcbind \
   readline-devel \
   rsync \
+  smartmontools \
   sysstat \
   telnet \
   usbutils \

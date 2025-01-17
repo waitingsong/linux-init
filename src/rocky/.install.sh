@@ -21,11 +21,13 @@ stage/10.install-apps.sh
 stage/13.user-nvm.sh
 stage/14.tune.sh
 stage/17.service.sh
-stage/20.install-docker.sh
-stage/21.install-docker-compose.sh
+# stage/20.install-docker.sh
+# stage/21.install-docker-compose.sh
 stage/90.update-crt.sh
 # stage/91.turn-zram-on.sh
 stage/99.post-install.sh
+
+dnf update -y
 
 set +x
 echo ==================== 5秒后重启系统 ====================

@@ -23,6 +23,7 @@ sudo -u root sh/install-nvm.sh
 sh/set-config.global.sh
 sh/turn-zram-on.sh
 sh/turn-selinux-off.sh
+sh/install-zfs.sh
 
 set +x
 echo -e "\n"

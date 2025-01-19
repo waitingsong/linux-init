@@ -66,6 +66,7 @@ dnf install -y \
   vsftpd \
   whois \
   glibc \
+  tree \
   bind-utils
 
 

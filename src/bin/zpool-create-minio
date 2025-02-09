@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eo pipefail
+
+poo_name="minio"
+
+echo ==================== OpenZFS 创建存储池 /${poo_name} ====================
+
+disk="${1}"
+
+if [[ -z "${disk}" ]]; then
+  echo "Usage: $0 <by-id>|<by-path>|<by-uuid>"
+  echo "Example: $0 pci-0000:0b:00.0-nvme-2 | nvme-eui.b1b...d7 | /dev/nvme0n2 "
+  tree /dev/disk/
+  lsblk
+  exit 1
+fi
+
+if [[ -d "/${poo_name}" ]]; then
+  echo "Directory exists: /${poo_name}"
+  exit 1
+fi
+
+zpool create -o ashift=12 -o autotrim=on ${poo_name} -m /${poo_name} "${disk}"
+zfs set dedup=off atime=off relatime=on xattr=sa compression=zstd logbias=throughput  recordsize=128K sync=disabled ${poo_name}
+systemctl enable zfs-scrub-weekly@${poo_name}.timer --now
+# systemctl enable zfs-trim-weekly@${poo_name}.timer --now
+
+zpool list
+zfs_opts='name,used,available,referenced,mountpoint,compression,compressratio,recordsize,logbias,sync,primarycache,readonly,mounted,creation,'
+zfs list -o "${zfs_opts}"
+
+zfs-set-refquota ${poo_name} 90
+

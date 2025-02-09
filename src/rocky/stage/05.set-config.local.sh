@@ -5,7 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . ${DIR}/../config/env.sh
 
 sudo -u root sh/set-config.local.sh
-sudo -u admins sh/set-config.local.sh
 sudo -u admin sh/set-config.local.sh
+sudo -u dba sh/set-config.local.sh
 sudo -u ci sh/set-config.local.sh
 

@@ -38,12 +38,20 @@ fi
 # echo 1024000000 > /sys/module/zfs/parameters/zfs_arc_max
 # 获取系统总内存（单位：KB）
 total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-# 计算 40% 的内存值（单位：KB）
-forty_percent_memory=$((total_memory * 40 / 100))
+# 计算 30% 的内存值（单位：KB）
+forty_percent_memory=$((total_memory * 30 / 100))
 echo "系统总内存: $total_memory KB"
-echo "设置ARC为40%的内存值: $forty_percent_memory KB"
+echo "设置ARC最大使用30%的内存容量: $forty_percent_memory KB"
 echo $forty_percent_memory > /sys/module/zfs/parameters/zfs_arc_max
+
+# 计算 5% 的内存值（单位：KB）
+min_percent_memory=$((total_memory * 5 / 100))
+echo "设置ARC最少使用5%的内存容量: $min_percent_memory KB"
+echo $min_percent_memory > /sys/module/zfs/parameters/zfs_arc_min
 
 # arc_summary | less
 # cat /proc/spl/kstat/zfs/arcstats
+# arcstat 1
+
+systemctl enable zfs-zed.service --now 2>/dev/null
 

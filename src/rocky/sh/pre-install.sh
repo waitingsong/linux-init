@@ -1,6 +1,8 @@
 #!/bin/sh
 set -euo pipefail
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 echo ==================== pre-install ====================
 
 mkdir -p /root/.vim/swp

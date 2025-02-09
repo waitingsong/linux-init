@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eo pipefail
+
+fs_name="data/log"
+mount_name="/data/log"
+log_path="/var/log"
+
+echo ==================== OpenZFS 创建文件系统 ${fs_name} ====================
+
+
+if [[ -d "/${fs_name}" ]]; then
+  echo "Directory exists: /${fs_name}"
+  exit 1
+fi
+
+zfs create ${fs_name}
+zfs set dedup=off atime=off relatime=off xattr=sa compression=zstd-3 logbias=throughput recordsize=128K ${fs_name}
+
+zfs_opts='name,used,available,referenced,mountpoint,compression,compressratio,recordsize,logbias,sync,primarycache,readonly,mounted,creation,'
+zfs list -o "${zfs_opts}"
+zfs-set-quota ${fs_name} 20  # 20% of the pool
+
+echo "> Backup ${log_name}..."
+sudo rm -rf ${mount_name}.backup
+sudo cp -r ${log_path} ${log_path}.backup
+sudo touch ${log_path}/foo
+sudo cp -r ${log_path}.backup/* ${mount_name}
+sudo rm -rf ${log_path}
+echo "> Create link ${mount_name} to ${log_name}..."
+sudo ln -sf ${mount_name} ${log_path}
+
+echo ==================== 5秒后重启系统 ====================
+sleep 5
+sudo reboot
+

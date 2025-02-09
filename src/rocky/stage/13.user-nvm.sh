@@ -6,7 +6,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . ${DIR}/../config/env.sh
 
 # sudo -u root ./sh/install-nvm.sh ext $force
-sudo -u admins sh/install-nvm.sh ext $force
 sudo -u admin sh/install-nvm.sh core $force
+sudo -u dba sh/install-nvm.sh ext $force
 sudo -u ci sh/install-nvm.sh core $force
 

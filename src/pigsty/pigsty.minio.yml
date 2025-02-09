@@ -18,9 +18,7 @@
 # find . -type f -exec sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/|https://mirrors.tencent.com/|g' {} +
 # pig sty conf     # auto-generate pigsty.yml config file
 # pig sty install  # run the install.yml playbook
-# MINIO 配置：单节点
-
-# @TODO set default_toast_compression=lz4
+# MINIO 配置：多节点
 
 all:
 
@@ -70,10 +68,11 @@ all:
     minio:
       hosts:
         10.1.1.10: { minio_seq: 110 }
+        10.1.1.11: { minio_seq: 111 }
       vars:
         minio_cluster: minio
         minio_buckets: [ { name: pgsql }, { name: infra }, { name: redis } ]
-        minio_data: /minio  # default /data/minio
+        minio_data: '/minio{1...2}'
 
     #----------------------------------#
     # pgsql cluster: pg-meta (CMDB)    #
@@ -308,7 +307,7 @@ all:
     dns_records:
       - "${admin_ip} h.pigsty a.pigsty p.pigsty g.pigsty"
       - "${admin_ip} api.pigsty adm.pigsty cli.pigsty ddl.pigsty lab.pigsty git.pigsty m.pigsty wiki.pigsty"
-      - "10.1.1.10 sss.pigsty"
+      - "${admin_ip} sss.pigsty"
 
     node_admin_enabled: false          # create a admin user on target node?
     node_admin_uid: 88                # uid and gid for node admin user

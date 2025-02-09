@@ -27,6 +27,7 @@ timedatectl set-timezone Asia/Chongqing
 echo ========== 安装核心工具 ==========
 dnf install -y \
   bash-completion \
+  bc \
   bzip2 \
   curl wget \
   dnf-utils \
@@ -50,9 +51,11 @@ dnf install -y \
   dnsmasq \
   dstat \
   elfutils-libelf-devel \
+  fio \
   libevent libevent-devel \
   lm_sensors \
   lz4 \
+  mc \
   mlocate \
   nfs-utils nmap \
   rpcbind \

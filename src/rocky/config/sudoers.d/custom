@@ -1,5 +1,5 @@
 
-Defaults: admin,admins        timestamp_timeout=15
+Defaults: admin,dba        timestamp_timeout=15
 admin   ALL=(ALL)       ALL
-admins  ALL=(ALL)       ALL
+dba  ALL=(ALL)       ALL
 

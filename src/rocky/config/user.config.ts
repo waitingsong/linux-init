@@ -15,21 +15,24 @@ const admin: CreateUserOptions = {
   uid: 2000,
   gid: 2000,
   createHomeDir: true,
-  groups: ['docker', 'www'],
+  hasSudo: true,
+  groups: ['docker', 'www', 'postgres'],
+  sshAllowUser: true,
+  sshSelfWithoutPassword: true,
+}
+
+const dba: CreateUserOptions = {
+  username: 'dba',
+  uid: 88,
+  gid: 88,
+  createHomeDir: true,
+  groups: ['docker', 'www', 'postgres', 'admin'],
   hasSudo: true,
   sudoWithoutPassword: true,
   sshAllowUser: true,
   sshSelfWithoutPassword: true,
 }
 
-const admins: CreateUserOptions = {
-  username: 'admins',
-  createHomeDir: true,
-  hasSudo: true,
-  groups: ['docker', 'www', 'admin'],
-  sshAllowUser: true,
-  sshSelfWithoutPassword: true,
-}
 
 const git: CreateUserOptions = {
   username: 'git',
@@ -79,7 +82,7 @@ const pgbouncer: CreateUserOptions = {
 export const userList: CreateUserOptions[] = [
   postgres,
   admin,
-  admins,
+  dba,
   git,
   ci,
   www,

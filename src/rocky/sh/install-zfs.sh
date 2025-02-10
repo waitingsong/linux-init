@@ -52,6 +52,7 @@ echo $min_percent_memory > /sys/module/zfs/parameters/zfs_arc_min
 # arc_summary | less
 # cat /proc/spl/kstat/zfs/arcstats
 # arcstat 1
+# zpool iostat -r 1
 
 systemctl enable zfs-zed.service --now 2>/dev/null
 

@@ -20,7 +20,7 @@
 # pig sty install  # run the install.yml playbook
 # MINIO 配置：单节点
 
-# @TODO set default_toast_compression=lz4
+# @TODO set default_toast_compression=lz4, full_page_writes=off
 
 all:
 

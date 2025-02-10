@@ -30,7 +30,12 @@ stage/99.post-install.sh
 dnf update -y
 
 set +x
-echo ==================== 5秒后重启系统 ====================
-sleep 5
-reboot
+data_log=/data/log
+if [[ -d $data_log ]]; then
+  set-var-log-dst $data_log
+else
+  echo ==================== 5秒后重启系统 ====================
+  sleep 5
+  reboot
+fi
 

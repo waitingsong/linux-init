@@ -14,6 +14,7 @@ alias grep="grep --color=auto"
 alias fgrep="fgrep --color=auto"
 alias egrep="egrep --color=auto"
 alias now='date +"DATE: %Y-%m-%d  TIME: %H:%M:%S  EPOCH: %s"'
+alias date_ft='date +%F_%T'
 alias today='date +"%Y%m%d "'
 
 alias je="journalctl -xe"

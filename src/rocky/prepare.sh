@@ -3,7 +3,7 @@ set -euo pipefail
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . ${DIR}/config/env.sh
 
-cp -f ${SRC}/bin/* /usr/bin/
+cp -f ${SRC}/script/* /usr/bin/
 
 if [ ! -f ~/.ssh/id_ed25519 ]; then
   ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
@@ -32,7 +32,8 @@ echo -e "\n"
 echo -------------------------------------------------------------------------
 # echo "Run command: \"npm i --prod\" under \"${BASE}\" after reboot!"
 echo "3秒后重启系统"
-echo "运行 sh/zfs-create-{data|postgres|minio}.sh <disk> 创建默认 ZFS 存储池和文件系统"
+echo "运行 zpool-create-data <disk> 创建默认 ZFS 存储池"
+echo "运行 {zpool|zfs}-create-{postgres|minio|log} <disk> 创建默认 ZFS 存储池和文件系统"
 echo -------------------------------------------------------------------------
 echo -e "\n"
 sleep 3

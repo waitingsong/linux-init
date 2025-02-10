@@ -10,13 +10,16 @@
 #==============================================================#
 # change epel repo to aliyun mirror
 
-# curl -fsSL https://repo.pigsty.io/pig | bash
+# curl https://repo.pigsty.io/pig | bash    # cloudflare
+# curl https://repo.pigsty.cc/pig | bash    # china cdn
 # su - dba
+# su - admin
 # pig sty init     # install embed pigsty to ~/pigsty
 # pig sty boot     # install ansible and other pre-deps
 # find . -type f -exec sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/|https://mirrors.aliyun.com/|g' {} +
 # find . -type f -exec sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/|https://mirrors.tencent.com/|g' {} +
 # pig sty conf     # auto-generate pigsty.yml config file
+# 可选启用代理
 # pig sty install  # run the install.yml playbook
 # MINIO 配置：单节点
 
@@ -65,6 +68,7 @@ all:
     # https://pigsty.io/zh/docs/minio/param/#minio_data
     # ./minio.yml -l minio                      # 在 minio 分组上安装 MINIO 模块
     # ./minio.yml -l minio -e minio_clean=true  # 安装 MINIO 模块，安装时清理现有数据目录（危险！）
+    # ./minio.yml -l <cls> -e minio_clean=true -t minio_clean
     # pgbackrest --stanza=pg-meta --log-level-console=info stanza-create # 初始化 pgbackrest 备份仓库
     #----------------------------------#
     minio:
@@ -73,7 +77,7 @@ all:
       vars:
         minio_cluster: minio
         minio_buckets: [ { name: pgsql }, { name: infra }, { name: redis } ]
-        minio_data: /minio  # default /data/minio
+        # minio_data: /minio  # default /data/minio
 
     #----------------------------------#
     # pgsql cluster: pg-meta (CMDB)    #
@@ -85,7 +89,7 @@ all:
         # 10.1.1.12: { pg_seq: 112, pg_role: offline } # <---- offline instance of ETL & interactive queries
       vars:
         pg_cluster: pg-meta                 # required identity parameter, usually same as group name
-        pg_fs_main: /data-pg                # default /data/postgres
+        pg_fs_main: /postgres               # default /data
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # define business users here: https://pigsty.io/docs/pgsql/user/
@@ -174,8 +178,8 @@ all:
         # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
         # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
       vars:
-        pg_cluster: pg-a            # define pgsql cluster name
-        pg_fs_main: /data-pg       # default /data/postgres
+        pg_cluster: pg-a                    # define pgsql cluster name
+        pg_fs_main: /postgres               # default /data
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode

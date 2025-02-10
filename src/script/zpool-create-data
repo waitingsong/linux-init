@@ -5,9 +5,9 @@ set -eo pipefail
 # https://201.ustclug.org/ops/storage/zfs/#tuning
 # https://bun.uptrace.dev/postgres/tuning-zfs-aws-ebs.html
 
-poo_name="data"
+pool_name="data"
 
-echo ==================== OpenZFS 创建存储池 /${poo_name} ====================
+echo ==================== OpenZFS 创建存储池 /${pool_name} ====================
 
 disk="${1}"
 
@@ -19,15 +19,15 @@ if [[ -z "${disk}" ]]; then
   exit 1
 fi
 
-if [[ -d "/${poo_name}" ]]; then
-  echo "Directory exists: /${poo_name}"
+if [[ -d "/${pool_name}" ]]; then
+  echo "Directory exists: /${pool_name}"
   exit 1
 fi
 
-zpool create -o ashift=12 -o autotrim=on ${poo_name} -m /${poo_name} "${disk}"
-zfs set dedup=off atime=off relatime=on xattr=sa compression=zstd logbias=latency recordsize=128K ${poo_name}
-systemctl enable zfs-scrub-weekly@${poo_name}.timer --now
-# systemctl enable zfs-trim-weekly@${poo_name}.timer --now
+zpool create -o ashift=12 -o autotrim=on ${pool_name} -m /${pool_name} "${disk}"
+zfs set dedup=off atime=off relatime=on xattr=sa compression=zstd logbias=latency recordsize=128K ${pool_name}
+systemctl enable zfs-scrub-weekly@${pool_name}.timer --now
+# systemctl enable zfs-trim-weekly@${pool_name}.timer --now
 
 zpool list
 # zfs list
@@ -37,7 +37,7 @@ zpool list
 zfs_opts='name,used,available,referenced,mountpoint,compression,compressratio,recordsize,logbias,sync,primarycache,readonly,mounted,creation,'
 zfs list -o "${zfs_opts}"
 
-zfs-set-refquota ${poo_name} 90
+zfs-set-refquota ${pool_name} 90
 arcstat
 # cat /proc/spl/kstat/zfs/arcstats
 

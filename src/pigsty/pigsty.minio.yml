@@ -84,7 +84,7 @@ all:
         # 10.1.1.12: { pg_seq: 112, pg_role: offline } # <---- offline instance of ETL & interactive queries
       vars:
         pg_cluster: pg-meta                 # required identity parameter, usually same as group name
-        pg_fs_main: /data-pg                # default /data/postgres
+        pg_fs_main: /var/lib/pg-data        # default /data/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # define business users here: https://pigsty.io/docs/pgsql/user/
@@ -173,8 +173,8 @@ all:
         # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
         # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
       vars:
-        pg_cluster: pg-a            # define pgsql cluster name
-        pg_fs_main: /data-pg       # default /data/postgres
+        pg_cluster: pg-a                    # define pgsql cluster name
+        pg_fs_main: /var/lib/pg-data        # default /data/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode

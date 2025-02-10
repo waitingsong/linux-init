@@ -17,13 +17,13 @@ if [[ ! -d "${mount_name}" ]]; then
   exit 1
 fi
 
-echo "> Backup ${log_name}..."
+echo "> Backup ${log_path}..."
 sudo rm -rf ${mount_name}.backup
 sudo cp -r ${log_path} ${log_path}.backup
 sudo touch ${log_path}/foo
 sudo cp -r ${log_path}.backup/* ${mount_name}
 sudo rm -rf ${log_path}
-echo "> Create link ${mount_name} to ${log_name}..."
+echo "> Create link ${mount_name} to ${log_path}..."
 sudo ln -sf ${mount_name} ${log_path}
 
 echo ==================== 5秒后重启系统 ====================

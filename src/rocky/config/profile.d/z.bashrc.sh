@@ -51,6 +51,6 @@ export NVM_DIR="$HOME/.nvm"
 Z_DIR=/usr/local/z-1.12
 [ -s "$Z_DIR/z.sh" ] && \. "$Z_DIR/z.sh"
 
-df -lhT
+# df -lhT
 
 # vim:ts=2:sw=2

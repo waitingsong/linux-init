@@ -8,4 +8,5 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 sh/prepare-pigsty.sh
 
+${OS_DIR}/sh/zfs-create-datasets.sh
 

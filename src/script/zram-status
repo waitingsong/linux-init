@@ -5,9 +5,9 @@ set +e
 
 echo ==================== 服务状态 ====================
 sudo systemctl status /dev/zram0
-sudo systemctl status /dev/zram1
-echo ==================== 块设备状态 ====================
-lsblk
+# sudo systemctl status /dev/zram1
+# echo ==================== 块设备状态 ====================
+# lsblk -f
 echo ==================== SWAP 状态 ====================
 swapon --show
 echo ==================== 内存 状态 ====================

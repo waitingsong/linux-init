@@ -27,7 +27,7 @@ dnf config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/
 dnf makecache
 
 d1="/data/docker"
-d2="/data/.docker"
+d2="/.docker"
 d3="/etc/docker"
 mkdir -p $d1 $d2 $d3
 chown docker:docker $d1 $d2
@@ -41,12 +41,24 @@ dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable docker --now
 docker version
 
-if [ ! -f /etc/docker/daemon.json ]; then
-  cp -u ${OS_DIR}/config/docker/daemon.json /etc/docker/
+# if [ ! -f /etc/docker/daemon.json ]; then
+#   cp -u ${OS_DIR}/config/docker/daemon.json /etc/docker/
+# fi
+
+# 使用 zfs 命令检查 data/docker 是否挂载
+set +e
+zfs_docker=$(zfs get type data/docker 2>/dev/null)
+set -e
+if [ -n "$zfs_docker" ]; then
+  cp -f ${OS_DIR}/config/docker/daemon.zfs.json /etc/docker/daemon.json
+else
+  cp -f ${OS_DIR}/config/docker/daemon.json /etc/docker/
 fi
+
 cat /etc/docker/daemon.json
 systemctl restart docker
 
 systemctl status docker | head -n 20
+docker info
 
 

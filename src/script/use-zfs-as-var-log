@@ -1,0 +1,54 @@
+#!/bin/sh
+set -eo pipefail
+
+dataset="${1}"
+if [[ -z "$dataset" ]]; then
+  echo "Usage: $0 <dataset>"
+  echo "Example: $0 data/log"
+  exit 1
+fi
+
+# 检查 ZFS 是否安装
+if ! command -v zfs &>/dev/null; then
+  echo "Error: 请先安装 ZFS"
+  exit 1
+fi
+
+
+# 使用 zfs 命令检查 /data/log 是否挂载
+# set +e  # 必须关闭 errexit
+# zfs_log=$(zfs get type "$fs_data_log" 2>/dev/null)
+# set -e
+
+log_path="/var/log"
+bk_log_path="/var/backup.log"
+
+echo ">> Backup ${log_path}..."
+sudo rm -rf $bk_log_path
+mkdir -p $bk_log_path
+sudo cp -r ${log_path} $bk_log_path
+sudo touch ${log_path}/foo
+
+echo ">> Creating $dataset"
+zfs-create $dataset ${log_path}
+set +e  # 必须关闭 errexit
+fs_data_log=$(zfs get -H -o value mountpoint $dataset 2>/dev/null)
+set -e
+if [[ -z "$fs_data_log" ]]; then
+  echo "Error: ZFS 数据集 $dataset 不存在或未挂载"
+  zfs list
+  exit 1
+fi
+
+echo ">> Restore ${log_path} ..."
+sudo cp -r ${bk_log_path}/* ${log_path}/
+sudo rm -rf $bk_log_path
+if [[ -d /var/log/log ]]; then
+  sudo cp -ru /var/log/log/* /var/log/
+  sudo rm -rf /var/log/log
+fi
+
+echo ==================== 5秒后重启系统 ====================
+sleep 5
+sudo reboot
+

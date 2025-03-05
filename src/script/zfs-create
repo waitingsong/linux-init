@@ -1,0 +1,114 @@
+#!/bin/sh
+set -eo pipefail
+
+if [[ -z $zfs_create_quiet ]]; then
+  echo ==================== OpenZFS 创建文件系统 ${dataset} ====================
+  echo -e "\n"
+fi
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <dataset> [mountpoint, quota]"
+  echo "Example: $0 data/log [/var/log, 70]"
+  exit 1
+fi
+dataset="$1"
+pool_name="${dataset%%/*}"
+if [[ -z "${pool_name}" ]]; then
+  echo "Error: pool_name is empty, example: $0 data/log"
+  exit 1
+fi
+
+sub_name="${dataset#*/}"
+if [[ -z "${sub_name}" ]]; then
+  echo "Error: sub_name is empty, example: $0 data/log"
+  exit 1
+fi
+
+# 判断 sub_name 不能包含分隔符/
+if [[ "${sub_name}" == *"/"* ]]; then
+  echo "Error: sub_name can not contain /, example: $0 data/log"
+  exit 1
+fi
+
+mount_point="$2"
+
+pg='pg'
+pg_wal_dir='zwal'
+pg_log_dir='pg_log_dir'
+minio='minio'
+
+zfs_props='dedup=off atime=off xattr=sa'
+if [[ "$dataset" == 'data/log' ]]; then
+  mount_point="${2:-$dataset}"
+  quota_value="${3:-20}"
+  # zstd-2 better than zstd-3 for log
+  zfs_props="${zfs_props} relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+
+elif [[ "$sub_name" == 'log' ]]; then
+  # zstd-2 better than zstd-3 for log
+  zfs_props="${zfs_props} compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+  quota_value="${3:-20}"
+
+elif [[ "$sub_name" == 'docker' ]]; then
+  quota_value="${3:-50}"
+  zfs_props="${zfs_props} relatime=off compression=zstd logbias=throughput recordsize=128K"
+
+elif [[ "$sub_name" == "$minio" ]]; then
+  quota_value="${3:-40}"
+  mount_point="${2:-/$dataset}"
+  zfs_props="${zfs_props} relatime=off compression=off logbias=throughput recordsize=128K exec=off sync=disabled"
+
+elif [[ "$sub_name" == "$pg" ]]; then
+  quota_value="${3:-90}"
+  mount_point="${2:-/$dataset}"
+  # 适合 logbias=throughput 的场景
+  #   - 数据目录的写入负载以批量异步写入为主（例如数据仓库场景）。
+  #   - 不使用 SLOG，依赖主存储池的随机 I/O 能力
+  # 适合 logbias=latency 的场景
+  #   - 高频小事务的 OLTP 负载，且对单事务延迟敏感（例如金融交易系统）
+  #   - 配置了高性能 SLOG 设备，需最大化 ZIL 的吞吐能力。
+  zfs_props="${zfs_props} relatime=off compression=zstd logbias=throughput recordsize=32K"
+
+elif [[ "$sub_name" == "${pg_wal_dir}" ]]; then
+  quota_value="${3:-50}"
+  mount_point="${2:-/$dataset}"
+  zfs_props="${zfs_props} relatime=off compression=zstd-fast logbias=throughput sync=always recordsize=64K exec=off"
+
+# elif [[ "$sub_name" == "${pg_log_dir}" ]]; then
+#   quota_value="${3:-10}"
+#   mount_point="${2:-/zlog}"
+#   zfs_props="${zfs_props} relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+
+else    # default 70%
+  zfs_props="${zfs_props} relatime=on compression=zstd logbias=latency recordsize=128K"
+  quota_value="${3:-70}"
+fi
+
+
+mount_op=""
+if [[ -n "$mount_point" ]]; then
+  mount_op="-o mountpoint=${mount_point}"
+fi
+
+if [[ -z $zfs_create_quiet ]]; then
+  echo "zfs_props: ${zfs_props}"
+  echo "mount_point: ${mount_point}, quota_value: ${quota_value}"
+fi
+
+zfs create ${dataset} ${mount_op}
+zfs set ${zfs_props} ${dataset}
+
+if [[ -z $zfs_create_quiet ]]; then
+  zfs_opts='name,used,available,mountpoint,compression,recordsize,logbias,sync,primarycache,exec,compressratio,'
+  zfs list -o "${zfs_opts}" ${dataset}
+fi
+zfs-set-quota ${dataset} ${quota_value} quiet
+
+
+if [[ -n "$mount_point" ]] && [[ $sub_name =~ ^pg ]]; then
+  chown -R postgres ${mount_point}
+fi
+if [[ "$sub_name" == "$minio" ]]; then
+  chmod 777 ${mount_point}
+fi
+

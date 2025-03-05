@@ -1,12 +1,15 @@
 #!/bin/sh
 set -euo pipefail
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 echo ==================== pre-install ====================
 
 mkdir -p /root/.vim/swp
 
 dnf install -y \
   curl \
+  git \
   glibc-langpack-en langpacks-zh_CN langpacks-en \
   unzip \
   wget \
@@ -28,4 +31,5 @@ localectl status
 if [[ -f /etc/lvm/devices/system.devices ]];then
   mv /etc/lvm/devices/system.devices /etc/lvm/devices/system.devices.bak
 fi
+
 

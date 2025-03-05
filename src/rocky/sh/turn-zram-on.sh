@@ -22,8 +22,6 @@ else
   echo -e "\n"
 fi
 
-cp -u sh/check-zram.sh /usr/local/bin/
-
 # sudo systemctl restart systemd-zram-setup@zram0.service
 # sudo systemctl restart systemd-zram-setup@zram1.service
 

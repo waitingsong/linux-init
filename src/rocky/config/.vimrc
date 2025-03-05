@@ -911,19 +911,23 @@ let g:NERDTrimTrailingWhitespace = 1
 filetype off                  " required
 
 " 启用vundle来管理vim插件
-set rtp+=~/.vim/bundle/vundle.vim
-"call vundle#begin()
+" git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
 " 安装插件写在这之后
 
 " let Vundle manage Vundle, required
-"Plugin 'VundleVim/Vundle.vim'
+Plugin 'VundleVim/Vundle.vim'
 
 " 如果你的插件来自github，写在下方，只要作者名/项目名就行了
 " Plugin 'Valloric/YouCompleteMe'
 "Plugin 'vim-syntastic/syntastic'
 
+" OR git clone https://github.com/preservim/nerdcommenter.git ~/.vim/bundle/nerdcommenter
+Plugin 'preservim/nerdcommenter'
 
-"call vundle#end()            " required
+" 结束插件管理部分
+call vundle#end()            " required
 filetype plugin on    " required
 " 常用命令
 " :PluginList       - 查看已经安装的插件
@@ -931,11 +935,12 @@ filetype plugin on    " required
 " :PluginUpdate     - 更新插件
 " :PluginSearch     - 搜索插件，例如 :PluginSearch xml就能搜到xml相关的插件
 " :PluginClean      - 删除插件，把安装插件对应行删除，然后执行这个命令即可
+" :BundleInstall
 " h: vundle         - 获取帮助
 
 
 nnoremap <silent> <F3> :Grep<CR>
-inoremap jj <Esc>
+inoremap jd <Esc>
 
 " F9 切换粘贴模式
 set pastetoggle=<F9>
@@ -957,5 +962,42 @@ if !isdirectory(expand("~/.vim/swp"))
     mkdir -p ~/.vim/swp
     echomsg "Created directory: ~/.vim/swp"
 endif
-set directory^=~/.vim/swp//
+set directory^=~/.vim/swp/
 
+let g:vim_json_syntax_conceal = 0
+
+" 设置 Ctrl+/ 快捷键进行注释和反注释
+if has('win32')
+  nmap <C-/> <leader>c<Space>
+  vmap <C-/> <leader>c<Space>
+else
+  nmap <C-_> <leader>c<Space>
+  vmap <C-_> <leader>c<Space>
+endif
+
+" Create default mappings
+let g:NERDCreateDefaultMappings = 1
+
+" Add spaces after comment delimiters by default
+let g:NERDSpaceDelims = 1
+
+" Use compact syntax for prettified multi-line comments
+let g:NERDCompactSexyComs = 1
+
+" Align line-wise comment delimiters flush left instead of following code indentation
+let g:NERDDefaultAlign = 'left'
+
+" Set a language to use its alternate delimiters by default
+let g:NERDAltDelims_java = 1
+
+" Add your own custom formats or override the defaults
+let g:NERDCustomDelimiters = { 'c': { 'left': '/**','right': '*/' } }
+
+" Allow commenting and inverting empty lines (useful when commenting a region)
+let g:NERDCommentEmptyLines = 1
+
+" Enable trimming of trailing whitespace when uncommenting
+let g:NERDTrimTrailingWhitespace = 1
+
+" Enable NERDCommenterToggle to check all selected lines is commented or not
+let g:NERDToggleCheckAllLines = 1

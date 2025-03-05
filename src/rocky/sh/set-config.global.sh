@@ -11,6 +11,7 @@ echo 'ulimit -SHn 65535' >> /etc/rc.local
 cp -u config/.vimrc /root/
 
 cp -u config/profile.d/* /etc/profile.d/
+cp -u config/bash_completion.d/* /etc/bash_completion.d/
 
 echo ==================== 设置 rc.local 自动执行 ====================
 chmod +x /etc/rc.d/rc.local

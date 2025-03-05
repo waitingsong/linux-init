@@ -8,5 +8,6 @@ workDir=$(pwd)
 echo "workDir: $workDir"
 
 sh/pre-install.sh
+sh/util/install-vim-plugins.sh
 
 set +eu

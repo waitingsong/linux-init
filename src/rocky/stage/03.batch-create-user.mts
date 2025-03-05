@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /* eslint-disable no-await-in-loop */
 import assert from 'node:assert'
+import { join } from 'node:path'
 
 import {
   createUser,
@@ -25,6 +26,8 @@ await $`pwd`.then(({ stdout }) => { console.info(stdout) })
 // console.info({ userList })
 console.info('==================== 新增系统默认用户 ====================')
 
+const installVimPlugins = join(OS_DIR, 'sh/util/install-vim-plugins.sh')
+
 for (const user of userList) {
   assert(user.username, 'username is required')
 
@@ -37,6 +40,9 @@ for (const user of userList) {
     }
     if (user.sshAllowUser) {
       await updateSshAllowUser(user.username)
+    }
+    if (user.createHomeDir) {
+      await $`sudo -u ${user.username} ${installVimPlugins}`
     }
     continue
   }
@@ -61,6 +67,9 @@ for (const user of userList) {
     await $`sudo -u ${user.username} sh/ssh-no-password.sh ${user.username}`
   }
 
+  if (user.createHomeDir) {
+    await $`sudo -u ${user.username} ${installVimPlugins}`
+  }
 }
 
 await updateSshAllowUser('root')

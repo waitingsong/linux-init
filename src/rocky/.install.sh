@@ -21,16 +21,30 @@ stage/10.install-apps.sh
 stage/13.user-nvm.sh
 stage/14.tune.sh
 stage/17.service.sh
-# stage/20.install-docker.sh
-# stage/21.install-docker-compose.sh
+stage/18.prepare-pigsty.sh
+stage/20.install-docker.sh
+stage/21.install-docker-compose.sh
 stage/90.update-crt.sh
-# stage/91.turn-zram-on.sh
 stage/99.post-install.sh
 
 dnf update -y
 
 set +x
-echo ==================== 5秒后重启系统 ====================
-sleep 5
-reboot
+# 检查 ZFS 是否安装
+if command -v zfs &>/dev/null; then
+
+  pool_name="data"
+  zfs_data=$(zfs list -H -o name | grep $pool_name)
+  if [[ -n "$zfs_data" ]]; then
+    use-zfs-as-var-log $pool_name/log
+  else
+    echo ==================== 5秒后重启系统 ====================
+    sleep 5
+    reboot
+  fi
+else
+  echo ==================== 5秒后重启系统 ====================
+  sleep 5
+  reboot
+fi
 

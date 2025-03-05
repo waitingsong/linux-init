@@ -1,6 +1,6 @@
 {
   "data-root": "/.docker",
-  "storage-driver": "overlay2",
+  "storage-driver": "zfs",
   "exec-opts": ["native.cgroupdriver=systemd"],
   "experimental" : true,
   "log-driver": "json-file",

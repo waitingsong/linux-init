@@ -1,0 +1,417 @@
+---
+#==============================================================#
+# File      :   meta.yml
+# Desc      :   Pigsty default config for single node
+# Ctime     :   2020-05-22
+# Mtime     :   2025-01-23
+# Docs      :   https://pigsty.io/docs/conf/meta
+# License   :   AGPLv3 @ https://pigsty.io/docs/about/license
+# Copyright :   2018-2025  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+
+all:
+
+  #==============================================================#
+  # Clusters, Nodes, and Modules
+  #==============================================================#
+  children:
+
+    #----------------------------------#
+    # infra: monitor, alert, repo, etc..
+    #----------------------------------#
+    infra:
+      hosts:
+        10.1.1.10: { infra_seq: 110, admin_ip: 10.1.1.10 }
+        10.1.1.11: { infra_seq: 111, admin_ip: 10.1.1.11 }
+      vars:
+        node_conf: oltp
+        # node_id_from_pg: false
+        vip_enabled: true
+        vip_vrid: 128
+        vip_address: 10.1.1.1
+        vip_interface: ens160
+
+    #----------------------------------#
+    # etcd cluster for HA postgres DCS
+    # https://pigsty.io/zh/docs/etcd/admin/
+    # ./etcd.yml -t etcd_conf # 使用最新状态刷新 /etc/etcd/etcd.conf
+    # ansible etcd -f 1 -b -a 'systemctl restart etcd'  # 可选操作：重启 etcd
+    #----------------------------------#
+    etcd:
+      hosts:
+        10.1.1.10: { etcd_seq: 110 }
+        10.1.1.11: { etcd_seq: 111 }
+        10.1.1.15: { etcd_seq: 115 }
+        10.1.1.16: { etcd_seq: 116 }
+        10.1.1.17: { etcd_seq: 117 }
+      vars:
+        etcd_cluster: etcd
+
+    #----------------------------------#
+    # minio (OPTIONAL backup repo)
+    # https://pigsty.io/zh/docs/minio/param/#minio_data
+    # ./minio.yml -l minio                      # 在 minio 分组上安装 MINIO 模块
+    # ./minio.yml -l minio -e minio_clean=true  # 安装 MINIO 模块，安装时清理现有数据目录（危险！）
+    # pgbackrest --stanza=pg-meta --log-level-console=info stanza-create # 初始化 pgbackrest 备份仓库
+    #----------------------------------#
+    minio:
+      hosts:
+        10.1.1.10: { minio_seq: 110 }
+        10.1.1.11: { minio_seq: 111 }
+      vars:
+        minio_cluster: minio
+        minio_buckets: [ { name: pgsql }, { name: infra }, { name: redis } ]
+        minio_data: '/minio{1...2}'
+
+    #----------------------------------#
+    # pgsql cluster: pg-meta (CMDB)    #
+    #----------------------------------#
+    pg-meta:
+      hosts:
+        10.1.1.10: { pg_seq: 110, pg_role: primary } # <---- primary instance with read-write capability
+        10.1.1.11: { pg_seq: 111, pg_role: replica } # <---- read only replica for read-only online traffic
+        # 10.1.1.12: { pg_seq: 112, pg_role: offline } # <---- offline instance of ETL & interactive queries
+      vars:
+        pg_cluster: pg-meta                 # required identity parameter, usually same as group name
+        pg_fs_main: /var/lib/pg-data        # default /data/postgres
+        # turn on if pg data not on ZFS Filesystem
+        pg_checksum: false
+        # define business users here: https://pigsty.io/docs/pgsql/user/
+        pg_users:                           # define business users/roles on this cluster, array of user definition
+          - name: dbuser_meta               # REQUIRED, `name` is the only mandatory field of a user definition
+            password: DBUser.Meta           # optional, password, can be a scram-sha-256 hash string or plain text
+            login: true                     # optional, can log in, true by default  (new biz ROLE should be false)
+            superuser: false                # optional, is superuser? false by default
+            createdb: false                 # optional, can create database? false by default
+            createrole: false               # optional, can create role? false by default
+            inherit: true                   # optional, can this role use inherited privileges? true by default
+            replication: false              # optional, can this role do replication? false by default
+            bypassrls: false                # optional, can this role bypass row level security? false by default
+            pgbouncer: true                 # optional, add this user to pgbouncer user-list? false by default (production user should be true explicitly)
+            connlimit: -1                   # optional, user connection limit, default -1 disable limit
+            expire_in: 7300                 # optional, now + n days when this role is expired (OVERWRITE expire_at)
+            # expire_at: '2030-12-31'         # optional, YYYY-MM-DD 'timestamp' when this role is expired  (OVERWRITTEN by expire_in)
+            comment: pigsty admin user      # optional, comment string for this user/role
+            roles: [dbrole_admin]           # optional, belonged roles. default roles are: dbrole_{admin,readonly,readwrite,offline}
+            parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
+            pool_mode: transaction          # optional, pgbouncer pool mode at user level, transaction by default
+            pool_connlimit: -1              # optional, max database connections at user level, default -1 disable limit
+          - { name: dbuser_view, password: DBUser.Viewer, pgbouncer: true, roles: [dbrole_readonly], comment: 'read-only viewer for meta database' }
+          - { name: dbuser_grafana, password: DBUser.Grafana, pgbouncer: true, roles: [dbrole_admin], comment: 'admin user for grafana database' }
+
+        # define business databases here: https://pigsty.io/docs/pgsql/db/
+        pg_databases:                       # define business databases on this cluster, array of database definition
+          - name: meta                      # REQUIRED, `name` is the only mandatory field of a database definition
+            baseline: cmdb.sql              # optional, database sql baseline path, (relative path among ansible search path, e.g: files/)
+            schemas: [ pigsty ]             # optional, additional schemas to be created, array of schema names
+            # extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
+            #   - { name: vector }            # install pgvector extension on this database by default
+            comment: pigsty meta database   # optional, comment string for this database
+            #pgbouncer: true                # optional, add this database to pgbouncer database list? true by default
+            #owner: postgres                # optional, database owner, postgres by default
+            #template: template1            # optional, which template to use, template1 by default
+            #encoding: UTF8                 # optional, database encoding, UTF8 by default. (MUST same as template database)
+            #locale: C                      # optional, database locale, C by default.  (MUST same as template database)
+            #lc_collate: C                  # optional, database collate, C by default. (MUST same as template database)
+            #lc_ctype: C                    # optional, database ctype, C by default.   (MUST same as template database)
+            #tablespace: pg_default         # optional, default tablespace, 'pg_default' by default.
+            #allowconn: true                # optional, allow connection, true by default. false will disable connect at all
+            #revokeconn: false              # optional, revoke public connection privilege. false by default. (leave connect with grant option to owner)
+            #register_datasource: true      # optional, register this database to grafana datasources? true by default
+            #connlimit: -1                  # optional, database connection limit, default -1 disable limit
+            #pool_auth_user: dbuser_meta    # optional, all connection to this pgbouncer database will be authenticated by this user
+            #pool_mode: transaction         # optional, pgbouncer pool mode at database level, default transaction
+            #pool_size: 64                  # optional, pgbouncer pool size at database level, default 64
+            #pool_size_reserve: 32          # optional, pgbouncer pool size reserve at database level, default 32
+            #pool_size_min: 0               # optional, pgbouncer pool size min at database level, default 0
+            #pool_max_db_conn: 100          # optional, max database connections at database level, default 100
+          - { name: grafana, owner: dbuser_grafana, revokeconn: true, comment: 'grafana primary database' }  # define another database
+
+        # define pg extensions: https://pigsty.io/docs/pgext/
+        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb' # add timescaledb to shared_preload_libraries
+
+        # define HBA rules here: https://pigsty.io/docs/pgsql/hba/#define-hba
+        pg_hba_rules:                       # example hba rules
+          - {user: dbuser_view , db: all ,addr: infra ,auth: pwd ,title: 'allow grafana dashboard access cmdb from infra nodes'}
+        pg_listen: '${ip},${vip},${lo}'
+        pg_vip_enabled: true               # define a L2 VIP which bind to cluster primary instance
+        pg_vip_address: 10.1.1.2/24      # L2 VIP Address and netmask
+        pg_vip_interface: ens160             # L2 VIP Network interface, overwrite on host vars if member have different network interface names
+        node_crontab: [ '00 01 * * * postgres /pg/bin/pg-backup full' ] # make a full backup every 1am
+
+    #----------------------------------#
+    # pgsql cluster:  (3 nodes)        #
+    # pg list pg-a
+    # pg restart pg-a
+    # pg edit-config pg-a
+    # https://pigsty.io/zh/docs/pgsql/admin/#创建集群
+    # bin/node-add <cls>  # 为集群 <cls> 初始化节点
+    # bin/pgsql-add <cls> # 初始化集群 <cls> 的pgsql实例
+    # bin/pgsql-rm <cls> # 删除集群 <cls> 的pgsql实例
+    # bin/pgsql-rm <cls> <ip...> # 移除集群 <cls> 的副本
+    # https://pigsty.io/zh/docs/pgsql/admin/#主动切换
+    # bin/pgsql-db <cls> <dbname> # 创建数据库
+    # https://pigsty.io/zh/docs/pgsql/admin/#添加实例
+    #----------------------------------#
+    # pg-a --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
+    pg-a:                          # define the new 3-node cluster pg-test
+      hosts:
+        10.1.1.15: { pg_seq: 115, pg_role: primary }   # primary instance, leader of cluster
+        10.1.1.16: { pg_seq: 116, pg_role: replica }   # replica instance, follower of leader
+        10.1.1.17: { pg_seq: 117, pg_role: replica }
+        # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
+        # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
+      vars:
+        pg_cluster: pg-a                    # define pgsql cluster name
+        pg_fs_main: /var/lib/pg-data        # default /data/postgres
+        # turn on if pg data not on ZFS Filesystem
+        pg_checksum: false
+        # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode
+        patroni_watchdog_mode: required
+        # https://pigsty.io/zh/docs/pgsql/admin/#创建用户
+        # bin/pgsql-user <cls> <username>
+        pg_users:
+          - name: dbuser_test
+            password: dbuser_test
+            pgbouncer: true
+            expire_in: 7300
+            parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
+          - name: dbadmin_pg-a
+            password: dbadmin_pg-a
+            pgbouncer: true
+            expire_in: 7300
+            roles: [ dbrole_admin ]
+          - name: dbuser
+            password: dbuser
+            pgbouncer: true
+            expire_in: 7300
+            roles: [ dbrole_readwrite ]
+            parameters: {
+              tcp_keepalives_idle: 60,
+              tcp_keepalives_interval: 10,
+              idle_in_transaction_session_timeout: 10000 # 10s,default 1min
+            }
+          - name: dbuser_ro
+            password: dbuser_ro
+            pgbouncer: true
+            expire_in: 7300
+            roles: [ dbrole_readonly ]
+            parameters: {
+              tcp_keepalives_idle: 60,
+              tcp_keepalives_interval: 10,
+              idle_in_transaction_session_timeout: 10000
+            }
+          - name: dbuser_offline
+            password: dbuser_offline
+            pgbouncer: true
+            expire_in: 7300
+            roles: [ dbrole_offline ]
+            parameters: {
+              tcp_keepalives_idle: 60,
+              tcp_keepalives_interval: 10
+            }
+        # https://pigsty.io/zh/docs/pgsql/admin/#创建数据库
+        # bin/pgsql-db <cls> <dbname>
+        pg_databases:
+          - name: test
+          - name: db_ci_test
+            owner: postgres                 # 可选，数据库所有者，默认为 postgres
+            allowconn: true                 # 可选，是否允许连接，默认为 true。显式设置 false 将完全禁止连接到此数据库
+            revokeconn: false               # 可选，撤销公共连接权限。默认为 false，设置为 true 时，属主和管理员之外用户的 CONNECT 权限会被回收
+            schemas: [pgmq]             # optional，要创建的附加模式，由模式名称字符串组成的数组
+            extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
+              - { name: vector }            # install pgvector extension on this database by default
+              - { name: plv8 }
+              - { name: pg_search }
+              - { name: pg_bigm }
+              - { name: pg_ivm }
+              - { name: zhparser }
+              # - { name: pgmq }
+              - { name: pg_partman,  schema: pgmq }
+        node_tune: crit
+        pg_conf: crit.yml
+        pg_listen: '${ip},${vip},${lo}'
+        pg_vip_enabled: true
+        pg_vip_address: 10.1.1.3/24
+        pg_vip_interface: ens160
+        node_crontab:  # make a full backup on monday 1am, and an incremental backup during weekdays
+          - '00 01 * * 1 postgres /pg/bin/pg-backup full'
+          - '00 01 * * 2,3,4,5,6,7 postgres /pg/bin/pg-backup'
+        # define pg extensions: https://pigsty.io/docs/pgext/
+        # pg_libs: 'pg_stat_statements, auto_explain, timescaledb, pg_cron, pg_wait_sampling, pg_stat_monitor' # add timescaledb to shared_preload_libraries
+        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb ' # add timescaledb to shared_preload_libraries
+
+        # define business service here: https://pigsty.io/docs/pgsql/svc/
+        pg_services:                        # extra services in addition to pg_default_services, array of service definition
+          # standby service will route {ip|name}:5435 to sync replica's pgbouncer (5435->6432 standby)
+          - name: standby
+            port: 5435
+            ip: "*"                         # optional, service bind ip address, `*` for all ip by default
+            selector: "[]"                  # required, service member selector, use JMESPath to filter inventory
+            dest: default                   # optional, destination port, default|postgres|pgbouncer|<port_number>, 'default' by default
+            check: /sync                    # optional, health check url path, / by default, 只有同步备库和主库才会返回 200 健康状态码
+            backup: "[? pg_role == `primary`]"  # backup server selector
+            maxconn: 5000                   # optional, max allowed front-end connection
+            balance: roundrobin             # optional, haproxy load balance algorithm (roundrobin by default, other: leastconn)
+            options: 'inter 3s fastinter 1s downinter 5s rise 3 fall 3 on-marked-down shutdown-sessions slowstart 30s maxconn 3000 maxqueue 128 weight 100'
+
+    #----------------------------------#
+    # pgsql delay cluster:             #
+    # pg-a-delay 是 pg-a 的延迟集群     #
+    # bin/pgsql-add pg-a-delay
+    #----------------------------------#
+    # pg-a-delay:
+    #   hosts:
+    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-a, pg_delay: 1d }
+    #     10.1.1.31: { pg_seq: 131, pg_role: replica }
+    #   vars:
+    #     pg_cluster: pg-a-delay
+    #     node_tune: crit
+    #     pg_conf: crit.yml
+
+    #----------------------------------#
+    # redis ms, sentinel, native cluster
+    # bin/redis-add redis-a
+    # bin/redis-rm redis-a
+    #----------------------------------#
+    redis-a: # redis native cluster: 4m x 5s
+      hosts:
+        10.1.1.15: { redis_node: 115 ,redis_instances: { 6379: { } ,6380: { } ,6381: { } } }
+        10.1.1.16: { redis_node: 116 ,redis_instances: { 6379: { } ,6380: { } ,6381: { } } }
+        10.1.1.17: { redis_node: 117 ,redis_instances: { 6379: { } ,6380: { } ,6381: { } } }
+      vars: { redis_cluster: redis-a ,redis_password: 'redis.test' ,redis_mode: cluster, redis_max_memory: 64MB }
+
+  #==============================================================#
+  # Global Parameters
+  #==============================================================#
+  vars:
+
+    # custom global variables
+    docker_enabled: true             # enable docker on this node? false by default
+    # docker_registry_mirrors:
+    #   - https://docker.m.daocloud.io
+    #   - https://dockerproxy.com
+    # grafana_database: postgres
+    # grafana_pgurl: postgres://dbuser_grafana:DBUser.Grafana@pg-meta:5436/grafana
+    dns_records:
+      - "${admin_ip} h.pigsty a.pigsty p.pigsty g.pigsty"
+      - "${admin_ip} api.pigsty adm.pigsty cli.pigsty ddl.pigsty lab.pigsty git.pigsty m.pigsty wiki.pigsty"
+      - "${admin_ip} sss.pigsty"
+
+    node_admin_enabled: false          # create a admin user on target node?
+    node_admin_uid: 88                # uid and gid for node admin user
+    node_admin_username: dba          # name of node admin user, `dba` by default
+
+
+    #----------------------------------#
+    # Meta Data
+    #----------------------------------#
+    version: v3.2.2                   # pigsty version string
+    admin_ip: 10.1.1.10             # admin node ip address
+    region: china                     # upstream mirror region: default|china|europe
+    node_tune: oltp                   # node tuning specs: oltp,olap,tiny,crit
+    pg_conf: oltp.yml                 # pgsql tuning specs: {oltp,olap,tiny,crit}.yml
+    # proxy_env:                        # global proxy env when downloading packages
+    #   # no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.aliyuncs.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
+    #   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,*.aliyuncs.com,*.tencent.com,mirrors.tuna.tsinghua.edu.cn,mirrors.zju.edu.cn"
+    #   https_proxy: "http://192.168.5.55:7890"
+    #   http_proxy: "http://192.168.5.55:7890"
+    #   all_proxy: "socks5://192.168.5.55:7890"
+
+    infra_portal:                     # domain names and upstream servers
+      home         : { domain: h.pigsty }
+      grafana      : { domain: g.pigsty ,endpoint: "${admin_ip}:3000" , websocket: true }
+      prometheus   : { domain: p.pigsty ,endpoint: "${admin_ip}:9090" }
+      alertmanager : { domain: a.pigsty ,endpoint: "${admin_ip}:9093" }
+      blackbox     : { endpoint: "${admin_ip}:9115" }
+      loki         : { endpoint: "${admin_ip}:3100" }
+      minio        : { domain: m.pigsty ,endpoint: "${admin_ip}:9001" ,scheme: https ,websocket: true }
+
+    #----------------------------------#
+    # MinIO Related Options
+    #----------------------------------#
+    pgbackrest_method: minio          # if you want to use minio as backup repo instead of 'local' fs, uncomment this
+    minio_users:                      # and configure `pgbackrest_repo` & `minio_users` accordingly
+      - { access_key: dba , secret_key: S3User.DBA, policy: consoleAdmin }
+      - { access_key: pgbackrest , secret_key: S3User.Backup, policy: readwrite }
+    pgbackrest_repo:                  # pgbackrest repo: https://pgbackrest.org/configuration.html#section-repository
+      local:                          # default pgbackrest repo with local posix fs
+        path: /pg/backup              # local backup directory, `/pg/backup` by default
+        retention_full_type: count    # retention full backups by count
+        retention_full: 3             # keep 2, at most 3 full backup when using local fs repo
+      minio:                          # optional minio repo for pgbackrest ...
+        type: s3                      # minio is s3-compatible, so s3 is used
+        s3_endpoint: sss.pigsty       # minio endpoint domain name, `sss.pigsty` by default
+        s3_region: us-east-1          # minio region, us-east-1 by default, useless for minio
+        s3_bucket: pgsql              # minio bucket name, `pgsql` by default
+        s3_key: pgbackrest            # minio user access key for pgbackrest
+        s3_key_secret: S3User.Backup  # minio user secret key for pgbackrest
+        s3_uri_style: path            # use path style uri for minio rather than host style
+        path: /pgbackrest             # minio backup path, default is `/pgbackrest`
+        storage_port: 9000            # minio port, 9000 by default
+        storage_ca_file: /pg/cert/ca.crt  # minio ca file path, `/pg/cert/ca.crt` by default
+        bundle: y                     # bundle small files into a single file
+        cipher_type: aes-256-cbc      # enable AES encryption for remote backup repo
+        cipher_pass: pgBackRest       # AES encryption password, default is 'pgBackRest'
+        retention_full_type: time     # retention full backup by time on minio repo
+        retention_full: 14            # keep full backup for last 14 days
+    # minio_endpoint: https://sss.pigsty:9002   # 覆盖默认值： https://sss.pigsty:9000
+    node_etc_hosts:
+      - "${admin_ip} sss.pigsty"
+
+    #----------------------------------#
+    # Credential: CHANGE THESE PASSWORDS
+    #----------------------------------#
+    #grafana_admin_username: admin
+    grafana_admin_password: pigsty
+    #pg_admin_username: dbuser_dba
+    pg_admin_password: DBUser.DBA
+    #pg_monitor_username: dbuser_monitor
+    pg_monitor_password: DBUser.Monitor
+    #pg_replication_username: replicator
+    pg_replication_password: DBUser.Replicator
+    #patroni_username: postgres
+    patroni_password: Patroni.API
+    #haproxy_admin_username: admin
+    haproxy_admin_password: pigsty
+    #minio_access_key: minioadmin
+    minio_secret_key: minioadmin
+
+    #----------------------------------#
+    # Safe Guard
+    #----------------------------------#
+    # you can enable these flags after bootstrap, to prevent purging running etcd / pgsql instances
+    etcd_safeguard: false             # prevent purging running etcd instance?
+    pg_safeguard: false               # prevent purging running postgres instance? false by default
+    pg_dummy_filesize: 8GiB          # size of `/pg/dummy`, hold xMB disk space for emergency use
+
+    #----------------------------------#
+    # Repo, Node, Packages
+    #----------------------------------#
+    # if you wish to customize your own repo, change these settings:
+    repo_modules: infra,node,pgsql #, docker
+    repo_remove: true                 # remove existing repo on admin node during repo bootstrap
+    node_repo_modules: local          # install the local module in repo_upstream for all nodes
+    node_repo_remove: true            # remove existing node repo for node managed by pigsty
+    repo_packages: [                  # default packages to be downloaded (if `repo_packages` is not explicitly set)
+      node-bootstrap, infra-package, infra-addons, node-package1, node-package2, pgsql-common #, docker
+    ]
+    # 追加扩展后 ./infra.yml -t repo_build 下载扩展. /www/pigsty/repo_complete
+    repo_extra_packages: [            # default postgres packages to be downloaded
+      pg17-core, pg17-main, pg17-admin, # pgsql-utility,
+      pg17-time, pg17-gis, pg17-rag,
+      pg17-fts, pg17-feat, pg17-lang,
+      pg17-type, pg17-util, pg17-func, pg17-stat, pg17-sec, pg17-fdw, pg17-sim, pg17-etl,
+      pg_partman
+    ]
+    pg_version: 17                    # default postgres version
+    # https://pigsty.cc/ext/list/
+    # https://ext.pigsty.io/#/list
+    pg_extensions: # check list for available extension for your pg & os combination
+      - pgvector, plv8, pg_cron, pg_wait_sampling, timescaledb
+      - pg_search, pgroonga, pg_bigm, zhparser, hunspell # ,pg_bestmatch
+      # - fts-stack
+      - pgmq, pg_partman # pg_jobmon
+
+...

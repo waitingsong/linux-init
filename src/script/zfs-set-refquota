@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eo pipefail
+
+
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <zfs-dataset> <refquota-percentage> [quiet]"
+    echo "Example: $0 tank/mydata 90        # Set refquota to 90% of pool size"
+    echo "Example: $0 tank/mydata 90 quiet  # Set refquota quietly (no output)"
+    exit 1
+fi
+
+dataset="$1"
+quota_percent="$2"
+quiet="$3"
+
+# 验证数据集是否存在
+if ! zfs list "$dataset" &>/dev/null; then
+    echo "Error: Dataset '$dataset' does not exist."
+    exit 1
+fi
+
+# 验证配额百分比是否为1到100之间的整数
+if ! [[ "$quota_percent" =~ ^[0-9]+$ ]] || [ "$quota_percent" -lt 1 ] || [ "$quota_percent" -gt 100 ]; then
+    echo "Error: refquota percentage must be an integer between 1 and 100."
+    exit 1
+fi
+
+pool=$(zfs get -H -o value name "$dataset" | cut -d/ -f1)
+
+# 获取存储池的总大小
+# total_space=$(zfs list -H -o available "$pool" | sed 's/[A-Za-z]*//g' | awk '{print $1}')
+# 获取存储池的精确字节大小
+pool_size=$(zpool get -Hp -o value size "$pool" 2>/dev/null)
+if [ -z "$pool_size" ]; then
+    echo "Error: Failed to retrieve size for pool '$pool'"
+    exit 1
+fi
+
+# 确保获取到的是数字
+if ! [[ "$pool_size" =~ ^[0-9]+$ ]]; then
+    echo "Error: Invalid pool size value: '$pool_size'"
+    exit 1
+fi
+
+# 计算配额值（整数运算）
+quota_value=$(( (pool_size * quota_percent) / 100 ))
+
+# 确保 quota_value 是整数
+if ! [[ "$quota_value" =~ ^[0-9]+$ ]]; then
+    echo "Error: Calculated refquota value is not an integer: $quota_value"
+    exit 1
+fi
+
+# 设置配额并检查结果
+if ! zfs set refquota="$quota_value" "$dataset"; then
+    echo "Error: Failed to set refquota for '$dataset'"
+    exit 1
+fi
+
+if [ -z "$quiet" ]; then
+  echo "------------ list ------------"
+  zfs list $dataset
+  echo -e "\n------------ refquota ------------"
+  zfs get refquota $dataset
+  echo -e "\n"
+
+  # 可读性显示结果
+  human_readable=$(numfmt --to=iec-i --suffix=B "$quota_value")
+  echo "Success: refquota for '$dataset' set to $human_readable (exact bytes: $quota_value)"
+fi
+

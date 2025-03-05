@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eo pipefail
+
+
+echo ==================== OpenZFS 创建存储池 /${pool_name} ====================
+
+disk="${1}"
+pool_name="data"
+
+if [[ -z "${disk}" ]]; then
+  echo "Usage: $0 <by-id>|<by-path>|<by-uuid>"
+  echo "Example: $0 pci-0000:0b:00.0-nvme-2 | nvme-eui.b1b...d7 | /dev/nvme0n2 "
+  tree /dev/disk/
+  lsblk
+  exit 1
+fi
+
+if [[ -d "/${pool_name}" ]]; then
+  echo "Directory exists: /${pool_name}"
+  exit 1
+fi
+
+zpool create -o ashift=12 -o autotrim=off ${pool_name} -m /${pool_name} "${disk}"
+zfs set dedup=off atime=off relatime=on xattr=sa compression=zstd-2 logbias=throughput recordsize=128K ${pool_name}
+systemctl enable zfs-scrub-weekly@${pool_name}.timer --now
+# systemctl enable zfs-trim-weekly@${pool_name}.timer --now
+
+echo -e "\nzpool status"
+zpool status -t ${pool_name}
+echo -e "\nzpool list"
+zpool list ${pool_name}
+echo -e "\nzfs list"
+zfs_opts='name,used,available,referenced,mountpoint,compression,recordsize,logbias,sync,primarycache,mounted,exec,creation,compressratio,'
+zfs list -o "${zfs_opts}" ${pool_name}
+
+echo -e "\n"
+zfs-set-quota ${pool_name} 70
+

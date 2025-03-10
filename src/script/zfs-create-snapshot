@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eo pipefail
+
+snap_name="$1"
+dataset="${snap_name%%@*}"
+if [[ -z "${dataset}" ]]; then
+  echo "Usage: $0 <snap_name> "
+  echo "Example: $0 data/log@2021-09-01"
+  echo "Example: $0 data/log   # auto generate timestamp"
+  echo -e "\nzfs list"
+  zfs list
+  exit 1
+fi
+
+if [[ -z "${snap_name}" ]]; then
+  echo "Usage: $0 <snap_name> "
+  echo "Example: $0 data/log@2021-09-01"
+  echo "Example: $0 data/log   # auto generate timestamp"
+  echo -e "\nzfs list"
+  zfs list
+  exit 1
+fi
+
+tag="${snap_name#*@}"
+if [[ -z "${tag}" ]] || [[ "$tag" == "$dataset" ]] ; then
+  tag=$(date +%F_%T)
+fi
+
+name="${dataset}@${tag}"
+
+zfs snapshot "${name}"
+echo -e "ZFS 创建快照 /${name} 完成\n"
+
+zlist_snapshot_opts='name,used,referenced,creation,compressratio,'
+zfs list -t snapshot -o ${zlist_snapshot_opts} ${name}
+

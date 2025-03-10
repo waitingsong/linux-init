@@ -24,7 +24,6 @@ stage/17.service.sh
 stage/18.prepare-pigsty.sh
 stage/20.install-docker.sh
 stage/21.install-docker-compose.sh
-stage/90.update-crt.sh
 stage/99.post-install.sh
 
 dnf update -y

@@ -9,7 +9,6 @@
 # Copyright :   2018-2025  Ruohang Feng / Vonng (rh@vonng.com)
 #==============================================================#
 
-
 all:
 
   #==============================================================#
@@ -53,7 +52,8 @@ all:
     # https://pigsty.io/zh/docs/minio/param/#minio_data
     # ./minio.yml -l minio                      # 在 minio 分组上安装 MINIO 模块
     # ./minio.yml -l minio -e minio_clean=true  # 安装 MINIO 模块，安装时清理现有数据目录（危险！）
-    # pgbackrest --stanza=pg-meta --log-level-console=info stanza-create # 初始化 pgbackrest 备份仓库
+    # ./minio.yml -l <cls> -e minio_clean=true -t minio_clean
+    # sudo -u postgres bash -c "pgbackrest --stanza=pg-meta --log-level-console=info stanza-create" # 初始化 pgbackrest 备份仓库
     #----------------------------------#
     minio:
       hosts:
@@ -74,7 +74,8 @@ all:
         # 10.1.1.12: { pg_seq: 112, pg_role: offline } # <---- offline instance of ETL & interactive queries
       vars:
         pg_cluster: pg-meta                 # required identity parameter, usually same as group name
-        pg_fs_main: /var/lib/pg-data        # default /data/postgres
+        pg_fs_main: /pdata                 # default /data
+        # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # define business users here: https://pigsty.io/docs/pgsql/user/
@@ -127,8 +128,22 @@ all:
             #pool_size_min: 0               # optional, pgbouncer pool size min at database level, default 0
             #pool_max_db_conn: 100          # optional, max database connections at database level, default 100
           - { name: grafana, owner: dbuser_grafana, revokeconn: true, comment: 'grafana primary database' }  # define another database
+          - name: db_ci_test
+            owner: postgres                 # 可选，数据库所有者，默认为 postgres
+            allowconn: true                 # 可选，是否允许连接，默认为 true。显式设置 false 将完全禁止连接到此数据库
+            revokeconn: false               # 可选，撤销公共连接权限。默认为 false，设置为 true 时，属主和管理员之外用户的 CONNECT 权限会被回收
+            schemas: [pgmq]             # optional，要创建的附加模式，由模式名称字符串组成的数组
+            extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
+              - { name: vector }            # install pgvector extension on this database by default
+              - { name: plv8 }
+              - { name: pg_search }
+              - { name: pg_bigm }
+              - { name: pg_ivm }
+              - { name: zhparser }
+              # - { name: pgmq }
+              - { name: pg_partman,  schema: pgmq }
 
-        # define pg extensions: https://pigsty.io/docs/pgext/
+        # define pg extensions: https://pigsty.cc/ext/
         pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb' # add timescaledb to shared_preload_libraries
 
         # define HBA rules here: https://pigsty.io/docs/pgsql/hba/#define-hba
@@ -142,9 +157,9 @@ all:
 
     #----------------------------------#
     # pgsql cluster:  (3 nodes)        #
-    # pg list pg-a
-    # pg restart pg-a
-    # pg edit-config pg-a
+    # pg list pg-1
+    # pg restart pg-1
+    # pg edit-config pg-1
     # https://pigsty.io/zh/docs/pgsql/admin/#创建集群
     # bin/node-add <cls>  # 为集群 <cls> 初始化节点
     # bin/pgsql-add <cls> # 初始化集群 <cls> 的pgsql实例
@@ -154,8 +169,8 @@ all:
     # bin/pgsql-db <cls> <dbname> # 创建数据库
     # https://pigsty.io/zh/docs/pgsql/admin/#添加实例
     #----------------------------------#
-    # pg-a --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
-    pg-a:                          # define the new 3-node cluster pg-test
+    # pg-1 --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
+    pg-1:                          # define the new 3-node cluster
       hosts:
         10.1.1.15: { pg_seq: 115, pg_role: primary }   # primary instance, leader of cluster
         10.1.1.16: { pg_seq: 116, pg_role: replica }   # replica instance, follower of leader
@@ -163,8 +178,9 @@ all:
         # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
         # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
       vars:
-        pg_cluster: pg-a                    # define pgsql cluster name
-        pg_fs_main: /var/lib/pg-data        # default /data/postgres
+        pg_cluster: pg-1                    # define pgsql cluster name
+        pg_fs_main: /pdata                 # default /data
+        # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode
@@ -177,8 +193,8 @@ all:
             pgbouncer: true
             expire_in: 7300
             parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
-          - name: dbadmin_pg-a
-            password: dbadmin_pg-a
+          - name: dbadmin_pg-1
+            password: dbadmin_pg-1
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_admin ]
@@ -187,39 +203,35 @@ all:
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_readwrite ]
-            parameters: {
-              tcp_keepalives_idle: 60,
-              tcp_keepalives_interval: 10,
+            parameters:
+              tcp_keepalives_idle: 60
+              tcp_keepalives_interval: 10
               idle_in_transaction_session_timeout: 10000 # 10s,default 1min
-            }
           - name: dbuser_ro
             password: dbuser_ro
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_readonly ]
-            parameters: {
-              tcp_keepalives_idle: 60,
-              tcp_keepalives_interval: 10,
+            parameters:
+              tcp_keepalives_idle: 60
+              tcp_keepalives_interval: 10
               idle_in_transaction_session_timeout: 10000
-            }
+
           - name: dbuser_offline
             password: dbuser_offline
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_offline ]
-            parameters: {
-              tcp_keepalives_idle: 60,
+            parameters:
+              tcp_keepalives_idle: 60
               tcp_keepalives_interval: 10
-            }
+
         # https://pigsty.io/zh/docs/pgsql/admin/#创建数据库
         # bin/pgsql-db <cls> <dbname>
         pg_databases:
           - name: test
           - name: db_ci_test
-            owner: postgres                 # 可选，数据库所有者，默认为 postgres
-            allowconn: true                 # 可选，是否允许连接，默认为 true。显式设置 false 将完全禁止连接到此数据库
-            revokeconn: false               # 可选，撤销公共连接权限。默认为 false，设置为 true 时，属主和管理员之外用户的 CONNECT 权限会被回收
-            schemas: [pgmq]             # optional，要创建的附加模式，由模式名称字符串组成的数组
+            schemas: [pgmq]                 # optional，要创建的附加模式，由模式名称字符串组成的数组
             extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
               - { name: vector }            # install pgvector extension on this database by default
               - { name: plv8 }
@@ -239,7 +251,6 @@ all:
           - '00 01 * * 1 postgres /pg/bin/pg-backup full'
           - '00 01 * * 2,3,4,5,6,7 postgres /pg/bin/pg-backup'
         # define pg extensions: https://pigsty.io/docs/pgext/
-        # pg_libs: 'pg_stat_statements, auto_explain, timescaledb, pg_cron, pg_wait_sampling, pg_stat_monitor' # add timescaledb to shared_preload_libraries
         pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb ' # add timescaledb to shared_preload_libraries
 
         # define business service here: https://pigsty.io/docs/pgsql/svc/
@@ -258,15 +269,15 @@ all:
 
     #----------------------------------#
     # pgsql delay cluster:             #
-    # pg-a-delay 是 pg-a 的延迟集群     #
-    # bin/pgsql-add pg-a-delay
+    # pg-1-delay 是 pg-1 的延迟集群     #
+    # bin/pgsql-add pg-1-delay
     #----------------------------------#
-    # pg-a-delay:
+    # pg-1-delay:
     #   hosts:
-    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-a, pg_delay: 1d }
+    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-1, pg_delay: 1d }
     #     10.1.1.31: { pg_seq: 131, pg_role: replica }
     #   vars:
-    #     pg_cluster: pg-a-delay
+    #     pg_cluster: pg-1-delay
     #     node_tune: crit
     #     pg_conf: crit.yml
 
@@ -288,7 +299,24 @@ all:
   vars:
 
     # custom global variables
+    pg_fs_wal: /pwal                 # default empty
+    pg_parameters:
+      default_toast_compression: lz4
+      full_page_writes: off
+      wal_compression: off
+
     docker_enabled: true             # enable docker on this node? false by default
+    docker_image:                    # 拉取镜像
+      - alpine
+      - redis
+    # docker_data_root: /.docker
+    # docker_storage_driver: zfs
+    # proxy_env:                        # global proxy env when downloading packages
+    #   # no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.aliyuncs.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
+    #   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,*.aliyuncs.com,*.tencent.com,mirrors.tuna.tsinghua.edu.cn,mirrors.zju.edu.cn"
+    #   https_proxy: "http://192.168.5.55:7890"
+    #   http_proxy: "http://192.168.5.55:7890"
+    #   all_proxy: "socks5://192.168.5.55:7890"
     # docker_registry_mirrors:
     #   - https://docker.m.daocloud.io
     #   - https://dockerproxy.com
@@ -299,7 +327,7 @@ all:
       - "${admin_ip} api.pigsty adm.pigsty cli.pigsty ddl.pigsty lab.pigsty git.pigsty m.pigsty wiki.pigsty"
       - "${admin_ip} sss.pigsty"
 
-    node_admin_enabled: false          # create a admin user on target node?
+    node_admin_enabled: false         # create a admin user on target node?
     node_admin_uid: 88                # uid and gid for node admin user
     node_admin_username: dba          # name of node admin user, `dba` by default
 
@@ -307,17 +335,11 @@ all:
     #----------------------------------#
     # Meta Data
     #----------------------------------#
-    version: v3.2.2                   # pigsty version string
+    version: v3.3                   # pigsty version string
     admin_ip: 10.1.1.10             # admin node ip address
     region: china                     # upstream mirror region: default|china|europe
     node_tune: oltp                   # node tuning specs: oltp,olap,tiny,crit
     pg_conf: oltp.yml                 # pgsql tuning specs: {oltp,olap,tiny,crit}.yml
-    # proxy_env:                        # global proxy env when downloading packages
-    #   # no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.aliyuncs.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
-    #   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,*.aliyuncs.com,*.tencent.com,mirrors.tuna.tsinghua.edu.cn,mirrors.zju.edu.cn"
-    #   https_proxy: "http://192.168.5.55:7890"
-    #   http_proxy: "http://192.168.5.55:7890"
-    #   all_proxy: "socks5://192.168.5.55:7890"
 
     infra_portal:                     # domain names and upstream servers
       home         : { domain: h.pigsty }
@@ -390,12 +412,12 @@ all:
     # Repo, Node, Packages
     #----------------------------------#
     # if you wish to customize your own repo, change these settings:
-    repo_modules: infra,node,pgsql #, docker
+    repo_modules: infra,node,pgsql,docker
     repo_remove: true                 # remove existing repo on admin node during repo bootstrap
     node_repo_modules: local          # install the local module in repo_upstream for all nodes
     node_repo_remove: true            # remove existing node repo for node managed by pigsty
     repo_packages: [                  # default packages to be downloaded (if `repo_packages` is not explicitly set)
-      node-bootstrap, infra-package, infra-addons, node-package1, node-package2, pgsql-common #, docker
+      node-bootstrap, infra-package, infra-addons, node-package1, node-package2, pgsql-common, docker
     ]
     # 追加扩展后 ./infra.yml -t repo_build 下载扩展. /www/pigsty/repo_complete
     repo_extra_packages: [            # default postgres packages to be downloaded
@@ -408,7 +430,7 @@ all:
     pg_version: 17                    # default postgres version
     # https://pigsty.cc/ext/list/
     # https://ext.pigsty.io/#/list
-    pg_extensions: # check list for available extension for your pg & os combination
+    pg_extensions: # check list for available extension for your pg & os combination:
       - pgvector, plv8, pg_cron, pg_wait_sampling, timescaledb
       - pg_search, pgroonga, pg_bigm, zhparser, hunspell # ,pg_bestmatch
       # - fts-stack

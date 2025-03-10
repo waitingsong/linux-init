@@ -73,8 +73,8 @@ all:
         # 10.1.1.12: { pg_seq: 112, pg_role: offline } # <---- offline instance of ETL & interactive queries
       vars:
         pg_cluster: pg-meta                 # required identity parameter, usually same as group name
-        pg_fs_main: /zpdata                 # default /data
-        pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
+        pg_fs_main: /pdata                 # default /data
+        # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # define business users here: https://pigsty.io/docs/pgsql/user/
@@ -131,7 +131,7 @@ all:
             owner: postgres                 # 可选，数据库所有者，默认为 postgres
             allowconn: true                 # 可选，是否允许连接，默认为 true。显式设置 false 将完全禁止连接到此数据库
             revokeconn: false               # 可选，撤销公共连接权限。默认为 false，设置为 true 时，属主和管理员之外用户的 CONNECT 权限会被回收
-            schemas: [pgmq]             # optional，要创建的附加模式，由模式名称字符串组成的数组
+            schemas: [pgmq]                 # optional，要创建的附加模式，由模式名称字符串组成的数组
             extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
               - { name: vector }            # install pgvector extension on this database by default
               - { name: plv8 }
@@ -146,30 +146,35 @@ all:
         pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb' # add timescaledb to shared_preload_libraries
 
         # define HBA rules here: https://pigsty.io/docs/pgsql/hba/#define-hba
-        pg_hba_rules:                       # example hba rules
+        pg_hba_rules:                          # example hba rules
           - {user: dbuser_view , db: all ,addr: infra ,auth: pwd ,title: 'allow grafana dashboard access cmdb from infra nodes'}
         pg_listen: '${ip},${vip},${lo}'
-        pg_vip_enabled: true               # define a L2 VIP which bind to cluster primary instance
-        pg_vip_address: 10.1.1.2/24      # L2 VIP Address and netmask
-        pg_vip_interface: ens160             # L2 VIP Network interface, overwrite on host vars if member have different network interface names
+        pg_vip_enabled: true                  # define a L2 VIP which bind to cluster primary instance
+        pg_vip_address: 10.1.1.2/24           # L2 VIP Address and netmask
+        pg_vip_interface: ens160              # L2 VIP Network interface, overwrite on host vars if member have different network interface names
         node_crontab: [ '00 01 * * * postgres /pg/bin/pg-backup full' ] # make a full backup every 1am
 
     #----------------------------------#
     # pgsql cluster:  (3 nodes)        #
-    # pg list pg-a
-    # pg restart pg-a
-    # pg edit-config pg-a
-    # https://pigsty.io/zh/docs/pgsql/admin/#创建集群
-    # bin/node-add <cls>  # 为集群 <cls> 初始化节点
-    # bin/pgsql-add <cls> # 初始化集群 <cls> 的pgsql实例
-    # bin/pgsql-rm <cls> # 删除集群 <cls> 的pgsql实例
-    # bin/pgsql-rm <cls> <ip...> # 移除集群 <cls> 的副本
-    # https://pigsty.io/zh/docs/pgsql/admin/#主动切换
-    # bin/pgsql-db <cls> <dbname> # 创建数据库
-    # https://pigsty.io/zh/docs/pgsql/admin/#添加实例
+    # pg list pg-1
+    # pg restart pg-1
+    # pg edit-config pg-1
+    # https://pigsty.cc/docs/pgsql/admin/#创建集群
+    # bin/node-add <cls>                      # 为集群 <cls> 初始化节点
+    # bin/pgsql-add <cls>                     # 初始化集群 <cls> 的pgsql实例
+    # https://pigsty.cc/docs/pgsql/admin/#添加实例
+    # bin/node-add <cls>|<ip>                 # 为集群 <cls> 初始化节点
+    # bin/pgsql-add <cls> <ip>                # 初始化 <ip>，作为集群 <cls> 的新从库
+    #
+    # bin/pgsql-rm <cls>                      # 删除集群 <cls> 的pgsql实例
+    # bin/pgsql-rm <cls> <ip...>              # 从现有集群中移除副本
+    #
+    # https://pigsty.cc/docs/pgsql/admin/#创建数据库
+    # bin/pgsql-db <cls> <dbname>             # 创建数据库
+    # https://pigsty.cc/docs/pgsql/admin/#主动切换
     #----------------------------------#
-    # pg-a --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
-    pg-a:                          # define the new 3-node cluster pg-test
+    # pg-1 --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
+    pg-1:                                     # define the new 3-node cluster
       hosts:
         10.1.1.15: { pg_seq: 115, pg_role: primary }   # primary instance, leader of cluster
         10.1.1.16: { pg_seq: 116, pg_role: replica }   # replica instance, follower of leader
@@ -177,9 +182,9 @@ all:
         # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
         # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
       vars:
-        pg_cluster: pg-a                    # define pgsql cluster name
-        pg_fs_main: /zpdata                 # default /data
-        pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
+        pg_cluster: pg-1                      # define pgsql cluster name
+        pg_fs_main: /pdata                    # default /data
+        # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
         # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode
@@ -191,9 +196,9 @@ all:
             password: dbuser_test
             pgbouncer: true
             expire_in: 7300
-            parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
-          - name: dbadmin_pg-a
-            password: dbadmin_pg-a
+            parameters: {}                    # optional, role level parameters with `ALTER ROLE SET`
+          - name: dbadmin_pg-1
+            password: dbadmin_pg-1
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_admin ]
@@ -268,15 +273,15 @@ all:
 
     #----------------------------------#
     # pgsql delay cluster:             #
-    # pg-a-delay 是 pg-a 的延迟集群     #
-    # bin/pgsql-add pg-a-delay
+    # pg-1-delay 是 pg-1 的延迟集群     #
+    # bin/pgsql-add pg-1-delay
     #----------------------------------#
-    # pg-a-delay:
+    # pg-1-delay:
     #   hosts:
-    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-a, pg_delay: 1d }
+    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-1, pg_delay: 1d }
     #     10.1.1.31: { pg_seq: 131, pg_role: replica }
     #   vars:
-    #     pg_cluster: pg-a-delay
+    #     pg_cluster: pg-1-delay
     #     node_tune: crit
     #     pg_conf: crit.yml
 
@@ -298,10 +303,14 @@ all:
   vars:
 
     # custom global variables
+    pg_fs_wal: /pwal                 # default empty
     pg_parameters:
       default_toast_compression: lz4
       full_page_writes: off
-      fsync: off                     # turn off fsync due to ZFS and pg_wal linked to sync /data/pg_wal_dir
+      wal_compression: off
+      # https://postgresql.ac.cn/docs/current/runtime-config-wal.html#GUC-WAL-INIT-ZERO
+      wal_init_zero: off             # for ZFS, turn off to avoid zeroing WAL files
+      wal_recycle: off               # for ZFS, turn off to avoid recycle WAL files
 
     docker_enabled: true             # enable docker on this node? false by default
     docker_image:                    # 拉取镜像

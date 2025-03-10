@@ -33,7 +33,7 @@ fi
 mount_point="$2"
 
 pg='pg'
-pg_wal_dir='zwal'
+pg_wal_dir='pg_wal'
 pg_log_dir='pg_log_dir'
 minio='minio'
 

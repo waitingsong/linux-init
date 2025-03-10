@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eo pipefail
+set -e
 
 dataset="${1}"
 if [[ -z "$dataset" ]]; then
@@ -31,8 +31,9 @@ sudo touch ${log_path}/foo
 
 echo ">> Creating $dataset"
 zfs-create $dataset ${log_path}
+echo -e "\n"
 set +e  # 必须关闭 errexit
-fs_data_log=$(zfs get -H -o value mountpoint $dataset 2>/dev/null)
+fs_data_log=$(zfs get -H -o value mountpoint $dataset 2>/dev/null) || true
 set -e
 if [[ -z "$fs_data_log" ]]; then
   echo "Error: ZFS 数据集 $dataset 不存在或未挂载"

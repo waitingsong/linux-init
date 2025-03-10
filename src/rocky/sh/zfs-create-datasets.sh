@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eo pipefail
+set -e
 
 
 # DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -19,24 +19,31 @@ if command -v zfs &>/dev/null; then
     echo ==================== ZFS 创建数据集 ====================
     export zfs_create_quiet=1
 
-    echo "> Creating /$pool_name/docker"
-    zfs-create $pool_name/docker /.docker
+    dataset="$pool_name/docker"
+    echo "> Creating $dataset"
+    exists=$(zfs get type "$dataset" -H 2>/dev/null) || true
+    [[ -z "$exists" ]] && zfs-create $dataset /.docker
 
-    echo "> Creating /$pool_name/minio"
-    zfs-create $pool_name/minio /minio
+    dataset="$pool_name/minio"
+    echo "> Creating $dataset"
+    exists=$(zfs get type "$dataset" -H 2>/dev/null) || true
+    [[ -z "$exists" ]] && zfs-create $dataset /minio
 
-    echo "> Creating /$pool_name/pg"
-    zfs-create $pool_name/pg /zpdata
+    dataset="$pool_name/pg"
+    echo "> Creating $dataset"
+    exists=$(zfs get type "$dataset" -H 2>/dev/null) || true
+    [[ -z "$exists" ]] && zfs-create $dataset /pdata
 
-    echo "> Creating /$pool_name/zwal"
-    zfs-create $pool_name/zwal /zwal
+    dataset="$pool_name/pg_wal"
+    echo "> Creating $dataset"
+    exists=$(zfs get type "$dataset" -H 2>/dev/null) || true
+    [[ -z "$exists" ]] && zfs-create $dataset /pwal
 
-    # echo "> Creating /$pool_name/pg_log_dir"
-    # zfs-create $pool_name/pg_log_dir /zlog
 
     echo -e "\nZFS dataset list:"
     zfs_opts='name,used,available,mountpoint,compression,recordsize,logbias,sync,primarycache,exec,compressratio,'
-    zfs list -o "${zfs_opts}" ${dataset}
+    zfs list -o "${zfs_opts}"
+    echo -e "\n"
   fi
 fi
 

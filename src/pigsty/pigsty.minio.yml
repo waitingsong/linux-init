@@ -309,7 +309,7 @@ all:
     docker_image:                    # 拉取镜像
       - alpine
       - redis
-    # docker_data_root: /.docker
+    # docker_data: /.docker
     # docker_storage_driver: zfs
     # proxy_env:                        # global proxy env when downloading packages
     #   # no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.aliyuncs.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"

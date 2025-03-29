@@ -78,6 +78,7 @@ all:
         # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
+        pg_shared_buffer_ratio: 0.25        # default 0.25, 25% of system memory
         # define business users here: https://pigsty.io/docs/pgsql/user/
         pg_users:                           # define business users/roles on this cluster, array of user definition
           - name: dbuser_meta               # REQUIRED, `name` is the only mandatory field of a user definition
@@ -132,27 +133,22 @@ all:
             owner: postgres                 # 可选，数据库所有者，默认为 postgres
             allowconn: true                 # 可选，是否允许连接，默认为 true。显式设置 false 将完全禁止连接到此数据库
             revokeconn: false               # 可选，撤销公共连接权限。默认为 false，设置为 true 时，属主和管理员之外用户的 CONNECT 权限会被回收
-            schemas: [pgmq]             # optional，要创建的附加模式，由模式名称字符串组成的数组
+            # schemas: []                   # optional，要创建的附加模式，由模式名称字符串组成的数组
             extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
-              - { name: vector }            # install pgvector extension on this database by default
-              - { name: plv8 }
-              - { name: pg_search }
-              - { name: pg_bigm }
-              - { name: pg_ivm }
-              - { name: zhparser }
               # - { name: pgmq }
               - { name: pg_partman,  schema: pgmq }
 
         # define pg extensions: https://pigsty.cc/ext/
-        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb' # add timescaledb to shared_preload_libraries
+        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb, auth_delay, safeupdate' # add to shared_preload_libraries
 
         # define HBA rules here: https://pigsty.io/docs/pgsql/hba/#define-hba
-        pg_hba_rules:                       # example hba rules
+        pg_hba_rules:                          # example hba rules
           - {user: dbuser_view , db: all ,addr: infra ,auth: pwd ,title: 'allow grafana dashboard access cmdb from infra nodes'}
         pg_listen: '${ip},${vip},${lo}'
-        pg_vip_enabled: true               # define a L2 VIP which bind to cluster primary instance
-        pg_vip_address: 10.1.1.2/24      # L2 VIP Address and netmask
-        pg_vip_interface: ens160             # L2 VIP Network interface, overwrite on host vars if member have different network interface names
+        pg_vip_enabled: true                  # define a L2 VIP which bind to cluster primary instance
+        pg_vip_address: 10.1.1.2/24           # L2 VIP Address and netmask
+        pg_vip_interface: ens160              # L2 VIP Network interface, overwrite on host vars if member have different network interface names
+        pg_weight: 100                        #实例 # 服务中的相对负载均衡权重，默认为100，范围0-255
         node_crontab: [ '00 01 * * * postgres /pg/bin/pg-backup full' ] # make a full backup every 1am
 
     #----------------------------------#
@@ -169,8 +165,8 @@ all:
     # bin/pgsql-db <cls> <dbname> # 创建数据库
     # https://pigsty.io/zh/docs/pgsql/admin/#添加实例
     #----------------------------------#
-    # pg-1 --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
-    pg-1:                          # define the new 3-node cluster
+    # pg-a --->  10.1.1.3 ---> 10.1.1.1{5,6,7}
+    pg-a:                                     # define the new 3-node cluster
       hosts:
         10.1.1.15: { pg_seq: 115, pg_role: primary }   # primary instance, leader of cluster
         10.1.1.16: { pg_seq: 116, pg_role: replica }   # replica instance, follower of leader
@@ -178,11 +174,13 @@ all:
         # 10.1.1.18: { pg_seq: 118, pg_role: offline } # offline instance of ETL & interactive queries
         # 10.1.1.18: { pg_seq: 118, pg_role: replica, pg_offline_query: true } # replica with offline access
       vars:
-        pg_cluster: pg-1                    # define pgsql cluster name
-        pg_fs_main: /pdata                 # default /data
+        # node_hugepage_count: -1
+        pg_cluster: pg-a                      # define pgsql cluster name
+        pg_fs_main: /pdata                    # default /data
         # pg_log_dir: /zlog/pg_log            # default /pg/log/postgres
         # turn on if pg data not on ZFS Filesystem
         pg_checksum: false
+        pg_shared_buffer_ratio: 0.25          # default 0.25
         # https://pigsty.cc/zh/docs/reference/param/#patroni_watchdog_mode
         patroni_watchdog_mode: required
         # https://pigsty.io/zh/docs/pgsql/admin/#创建用户
@@ -192,9 +190,9 @@ all:
             password: dbuser_test
             pgbouncer: true
             expire_in: 7300
-            parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
-          - name: dbadmin_pg-1
-            password: dbadmin_pg-1
+            parameters: {}                    # optional, role level parameters with `ALTER ROLE SET`
+          - name: dbadmin_pg-a
+            password: dbadmin_pg-a
             pgbouncer: true
             expire_in: 7300
             roles: [ dbrole_admin ]
@@ -231,14 +229,8 @@ all:
         pg_databases:
           - name: test
           - name: db_ci_test
-            schemas: [pgmq]                 # optional，要创建的附加模式，由模式名称字符串组成的数组
-            extensions:                     # optional, additional extensions to be installed: array of `{name[,schema]}`
-              - { name: vector }            # install pgvector extension on this database by default
-              - { name: plv8 }
-              - { name: pg_search }
-              - { name: pg_bigm }
-              - { name: pg_ivm }
-              - { name: zhparser }
+            # schemas: []                     # optional，要创建的附加模式，由模式名称字符串组成的数组
+            extensions:                       # optional, additional extensions to be installed: array of `{name[,schema]}`
               # - { name: pgmq }
               - { name: pg_partman,  schema: pgmq }
         node_tune: crit
@@ -247,11 +239,12 @@ all:
         pg_vip_enabled: true
         pg_vip_address: 10.1.1.3/24
         pg_vip_interface: ens160
+        pg_weight: 100                        #实例 # 服务中的相对负载均衡权重，默认为100，范围0-255
         node_crontab:  # make a full backup on monday 1am, and an incremental backup during weekdays
           - '00 01 * * 1 postgres /pg/bin/pg-backup full'
           - '00 01 * * 2,3,4,5,6,7 postgres /pg/bin/pg-backup'
         # define pg extensions: https://pigsty.io/docs/pgext/
-        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb ' # add timescaledb to shared_preload_libraries
+        pg_libs: 'pg_stat_statements, auto_explain, pg_cron, pg_wait_sampling, timescaledb, auth_delay, safeupdate ' # add to shared_preload_libraries
 
         # define business service here: https://pigsty.io/docs/pgsql/svc/
         pg_services:                        # extra services in addition to pg_default_services, array of service definition
@@ -269,15 +262,15 @@ all:
 
     #----------------------------------#
     # pgsql delay cluster:             #
-    # pg-1-delay 是 pg-1 的延迟集群     #
-    # bin/pgsql-add pg-1-delay
+    # pg-a-delay 是 pg-a 的延迟集群     #
+    # bin/pgsql-add pg-a-delay
     #----------------------------------#
-    # pg-1-delay:
+    # pg-a-delay:
     #   hosts:
-    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-1, pg_delay: 1d }
+    #     10.1.1.30: { pg_seq: 130, pg_role: primary , pg_upstream: pg-a, pg_delay: 1d }
     #     10.1.1.31: { pg_seq: 131, pg_role: replica }
     #   vars:
-    #     pg_cluster: pg-1-delay
+    #     pg_cluster: pg-a-delay
     #     node_tune: crit
     #     pg_conf: crit.yml
 
@@ -304,12 +297,16 @@ all:
       default_toast_compression: lz4
       full_page_writes: off
       wal_compression: off
+      # https://postgresql.ac.cn/docs/current/runtime-config-wal.html#GUC-WAL-INIT-ZERO
+      wal_init_zero: off             # for ZFS, turn off to avoid zeroing WAL files
+      wal_recycle: off               # for ZFS, turn off to avoid recycle WAL files
+      auth_delay.milliseconds: 1000
 
     docker_enabled: true             # enable docker on this node? false by default
     docker_image:                    # 拉取镜像
       - alpine
       - redis
-    # docker_data_root: /.docker
+    # docker_data: /.docker
     # docker_storage_driver: zfs
     # proxy_env:                        # global proxy env when downloading packages
     #   # no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.aliyuncs.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
@@ -335,7 +332,7 @@ all:
     #----------------------------------#
     # Meta Data
     #----------------------------------#
-    version: v3.3                   # pigsty version string
+    version: v3.4                   # pigsty version string
     admin_ip: 10.1.1.10             # admin node ip address
     region: china                     # upstream mirror region: default|china|europe
     node_tune: oltp                   # node tuning specs: oltp,olap,tiny,crit
@@ -430,10 +427,39 @@ all:
     pg_version: 17                    # default postgres version
     # https://pigsty.cc/ext/list/
     # https://ext.pigsty.io/#/list
-    pg_extensions: # check list for available extension for your pg & os combination:
+    pg_extensions:
       - pgvector, plv8, pg_cron, pg_wait_sampling, timescaledb
       - pg_search, pgroonga, pg_bigm, zhparser, hunspell # ,pg_bestmatch
       # - fts-stack
       - pgmq, pg_partman # pg_jobmon
+      - safeupdate
+    pg_default_schemas: # default schemas to be created
+      - monitor
+      - pgmq
+    pg_default_extensions:            # default extensions to be created
+      - { name: pg_stat_statements ,schema: monitor }
+      - { name: pgstattuple        ,schema: monitor }
+      - { name: pg_buffercache     ,schema: monitor }
+      - { name: pageinspect        ,schema: monitor }
+      - { name: pg_prewarm         ,schema: monitor }
+      - { name: pg_visibility      ,schema: monitor }
+      - { name: pg_freespacemap    ,schema: monitor }
+      - { name: postgres_fdw       ,schema: public  }
+      - { name: file_fdw           ,schema: public  }
+      - { name: btree_gist         ,schema: public  }
+      - { name: btree_gin          ,schema: public  }
+      - { name: pg_trgm            ,schema: public  }
+      - { name: intagg             ,schema: public  }
+      - { name: intarray           ,schema: public  }
+      - { name: pg_repack }
+      # additional extensions to be installed on all databases
+      - auth_delay
+      # - plv8
+      - pg_bigm
+      - pg_ivm
+      - safeupdate
+      - pg_search
+      - vector
+      - zhparser
 
 ...

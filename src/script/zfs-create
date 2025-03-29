@@ -37,26 +37,26 @@ pg_wal_dir='pg_wal'
 pg_log_dir='pg_log_dir'
 minio='minio'
 
-zfs_props='dedup=off atime=off xattr=sa'
+zfs_props='dedup=off xattr=sa'
 if [[ "$dataset" == 'data/log' ]]; then
   mount_point="${2:-$dataset}"
   quota_value="${3:-20}"
   # zstd-2 better than zstd-3 for log
-  zfs_props="${zfs_props} relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+  zfs_props="${zfs_props} atime=off relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
 
 elif [[ "$sub_name" == 'log' ]]; then
   # zstd-2 better than zstd-3 for log
-  zfs_props="${zfs_props} compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+  zfs_props="${zfs_props} atime=off relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
   quota_value="${3:-20}"
 
 elif [[ "$sub_name" == 'docker' ]]; then
   quota_value="${3:-50}"
-  zfs_props="${zfs_props} relatime=off compression=zstd logbias=throughput recordsize=128K"
+  zfs_props="${zfs_props} atime=off relatime=off compression=zstd logbias=throughput recordsize=128K"
 
 elif [[ "$sub_name" == "$minio" ]]; then
   quota_value="${3:-40}"
   mount_point="${2:-/$dataset}"
-  zfs_props="${zfs_props} relatime=off compression=off logbias=throughput recordsize=128K exec=off sync=disabled"
+  zfs_props="${zfs_props} atime=on relatime=on compression=off logbias=throughput recordsize=128K exec=off sync=disabled"
 
 elif [[ "$sub_name" == "$pg" ]]; then
   quota_value="${3:-90}"
@@ -67,20 +67,15 @@ elif [[ "$sub_name" == "$pg" ]]; then
   # 适合 logbias=latency 的场景
   #   - 高频小事务的 OLTP 负载，且对单事务延迟敏感（例如金融交易系统）
   #   - 配置了高性能 SLOG 设备，需最大化 ZIL 的吞吐能力。
-  zfs_props="${zfs_props} relatime=off compression=zstd logbias=throughput recordsize=32K"
+  zfs_props="${zfs_props} atime=off relatime=off compression=zstd logbias=throughput recordsize=32K"
 
 elif [[ "$sub_name" == "${pg_wal_dir}" ]]; then
   quota_value="${3:-50}"
   mount_point="${2:-/$dataset}"
-  zfs_props="${zfs_props} relatime=off compression=zstd-fast logbias=throughput sync=always recordsize=64K exec=off"
-
-# elif [[ "$sub_name" == "${pg_log_dir}" ]]; then
-#   quota_value="${3:-10}"
-#   mount_point="${2:-/zlog}"
-#   zfs_props="${zfs_props} relatime=off compression=zstd-2 logbias=throughput recordsize=128K exec=off"
+  zfs_props="${zfs_props} atime=off relatime=off compression=zstd-fast logbias=throughput sync=always recordsize=64K exec=off"
 
 else    # default 70%
-  zfs_props="${zfs_props} relatime=on compression=zstd logbias=latency recordsize=128K"
+  zfs_props="${zfs_props} atime=on relatime=on compression=zstd logbias=latency recordsize=128K"
   quota_value="${3:-70}"
 fi
 

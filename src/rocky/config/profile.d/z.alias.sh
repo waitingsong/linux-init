@@ -7,6 +7,7 @@ alias sh='/bin/bash'
 alias p="psql"
 alias j="jobs"
 alias h="history"
+alias psf="ps -axjf"
 
 alias dfn="dnf"
 alias hg="history | grep --color=auto "

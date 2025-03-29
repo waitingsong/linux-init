@@ -21,7 +21,8 @@ if [[ -d "/${pool_name}" ]]; then
 fi
 
 zpool create -o ashift=12 -o autotrim=off ${pool_name} -m /${pool_name} "${disk}"
-zfs set dedup=off atime=off relatime=on xattr=sa compression=zstd-2 logbias=throughput recordsize=128K ${pool_name}
+zpool set autoreplace=on ${pool_name}
+zfs set dedup=off atime=on relatime=on xattr=sa compression=zstd-2 logbias=throughput recordsize=128K ${pool_name}
 systemctl enable zfs-scrub-weekly@${pool_name}.timer --now
 # systemctl enable zfs-trim-weekly@${pool_name}.timer --now
 
